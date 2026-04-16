@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "508124749678",
+    "project_id": "anerastaner",
+    "storage_bucket": "anerastaner.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508124749678:android:53b556a6385fafd1fe2b7f",
+        "android_client_info": {
+          "package_name": "com.minakamil.dev.aner_astaner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "508124749678-2o5j9sfl4cl9hpjqk8njri5ibu4d6o8e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.minakamil.dev.aner_astaner",
+            "certificate_hash": "ac43cb009c5aad04a981ca1fe58bf037457db739"
+          }
+        },
+        {
+          "client_id": "508124749678-39omalcbf1oks87lp2jkme6lkbl08k2l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANL3iSHXSZzOFdabUS-PaT9miSYrtmc9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "508124749678-39omalcbf1oks87lp2jkme6lkbl08k2l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "508124749678-qhcv9b68a3lti7kqi2ee39096f5e9d8c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.anerAstaner"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

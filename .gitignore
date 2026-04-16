@@ -1,0 +1,38 @@
+# Flutter
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+coverage/
+
+# Android
+android/.gradle/
+android/app/build/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/
+
+# macOS
+macos/Pods/
+
+# Windows/Linux
+windows/flutter/generated_plugin_registrant.*
+linux/flutter/generated_plugin_registrant.*
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.log
+*.tmp
+*.lock
+
+# Firebase
+android/app/google-services.json
+
+# Temp files
+temp/
