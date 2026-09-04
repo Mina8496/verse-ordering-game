@@ -39,29 +39,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> loadUserData() async {
-    final data = await userController.fetchCurrentUserData();
-    print(data);
+    final profile = await userController.fetchCurrentUserProfile();
 
-    if (data != null) {
-      gender = data['Gender'];
+    if (profile != null) {
+      gender = profile.gender;
       // ✅ تحويل الجنس إذا كان بالإنجليزي
       if (gender == "Male") gender = "ذكر";
       if (gender == "Female") gender = "أنثى";
 
       setState(() {
-        name = data['full_name'];
+        name = profile.fullName;
         nameController.text = name ?? '';
 
-        church = data['Church'];
+        church = profile.church;
         churchController.text = church ?? '';
 
-        season = data['Season'];
+        season = profile.season;
         seasonController.text = season ?? '';
 
-        phoneController.text = data['Phone_Namber'] ?? 'غير متوفر';
+        phoneController.text = profile.phoneNumber ?? 'غير متوفر';
 
         // ✅ التعامل مع Birthday سواء String أو Timestamp
-        final birthdayData = data['Birthday'];
+        final birthdayData = profile.birthday;
         if (birthdayData is Timestamp) {
           final birthday = birthdayData.toDate();
           day = birthday.day;
@@ -80,7 +79,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           }
         }
 
-        canEdit = true; // ← تعديل متاح دائمًا
+        canEdit = true;
       });
     }
   }
