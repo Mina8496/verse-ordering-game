@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/exam_catalog/presentation/controllers/exam_catalog_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddExamesAlngelBox extends StatefulWidget {
   static const String kFixedExameID = "nFL11C4v8fPRqIgG0ZAe";
@@ -29,36 +30,35 @@ class _AddExamesAlngelBoxState extends State<AddExamesAlngelBox> {
     if (season.isEmpty ||
         widget.ChaptersID == null ||
         widget.ChurchID == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى إدخال اسم السفر")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("يرجى إدخال اسم السفر")));
       return;
     }
 
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.ChurchID)
-          .collection("Chapters")
-          .doc(widget.ChaptersID)
-          .collection("Exames")
-          .doc(AddExamesAlngelBox.kFixedExameID)
-          .collection("Alangel")
-          .add({
-        "title": season,
-        "created_at": FieldValue.serverTimestamp(),
-      });
+      await Get.find<ExamCatalogController>().addCategory(
+        churchId: widget.ChurchID!,
+        chapterId: widget.ChaptersID!,
+        title: season,
+      );
 
       widget.onExameAdded?.call();
       Navigator.of(context).pop();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")));
     }
+  }
+
+  @override
+  void dispose() {
+    seasonController.dispose();
+    super.dispose();
   }
 
   @override
@@ -86,7 +86,10 @@ class _AddExamesAlngelBoxState extends State<AddExamesAlngelBox> {
           onPressed: isLoading ? null : addData,
           child: isLoading
               ? const SizedBox(
-                  width: 20, height: 20, child: CircularProgressIndicator())
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(),
+                )
               : const Text("إضافة"),
         ),
       ],

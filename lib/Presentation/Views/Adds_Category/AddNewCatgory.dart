@@ -1,9 +1,8 @@
-
-// ignore_for_file: unused_local_variable
+import 'package:aner_astaner/features/category/presentation/controllers/category_controller.dart';
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddNewCatgory extends StatefulWidget {
   const AddNewCatgory({super.key});
@@ -13,31 +12,29 @@ class AddNewCatgory extends StatefulWidget {
 }
 
 class _AddNewCatgoryState extends State<AddNewCatgory> {
-  GlobalKey<FormState> globalKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> globalKey = GlobalKey<FormState>();
 
-  TextEditingController title = TextEditingController();
-
-  
+  final TextEditingController title = TextEditingController();
 
   bool isLoading = false;
   Future<void> addCategory() async {
-    CollectionReference Alangel =
-      FirebaseFirestore.instance.collection('Alangel');
     if (globalKey.currentState!.validate()) {
       try {
-        isLoading = true;
-        setState(() {});
-        DocumentReference response = await Alangel.add({
-          'title': title.text,
-        });
-        isLoading = false;
-        setState(() {});
+        setState(() => isLoading = true);
+        await Get.find<CategoryController>().addCategory(title.text.trim());
         Navigator.of(context).pushReplacementNamed("AddNewCatgory");
       } catch (e) {
         print("Erorrrrrror : $e");
+      } finally {
+        if (mounted) setState(() => isLoading = false);
       }
     }
-    // Call the user's CollectionReference to add a new use
+  }
+
+  @override
+  void dispose() {
+    title.dispose();
+    super.dispose();
   }
 
   @override
@@ -50,20 +47,19 @@ class _AddNewCatgoryState extends State<AddNewCatgory> {
       body: Form(
         key: globalKey,
         child: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 25, vertical: 20),
+                      horizontal: 25,
+                      vertical: 20,
+                    ),
                     child: CustomTextField(
                       validator: (val) {
-                        if (val == null) {
-                          return "لا يمكن ان يكون فارغ";
-                        }
-                        return "لا يمكن ان يكون فارغ";
+                        return val == null || val.trim().isEmpty
+                            ? "لا يمكن ان يكون فارغ"
+                            : null;
                       },
                       controller: title,
                       inputType: TextInputType.text,
@@ -72,15 +68,13 @@ class _AddNewCatgoryState extends State<AddNewCatgory> {
                       textAlign: TextAlign.right,
                     ),
                   ),
-                  const SizedBox(
-                    height: 20,
-                  ),
+                  const SizedBox(height: 20),
                   CustomGeneralButton(
                     onPressed: () {
                       addCategory();
                     },
                     text: "أضــافـة",
-                  )
+                  ),
                 ],
               ),
       ),

@@ -1,9 +1,10 @@
 import 'package:aner_astaner/Presentation/Views/Login/Edit_User_Page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:aner_astaner/features/user/domain/entities/user_summary.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
+import 'package:get/get.dart';
 
 class DisabledUsersPage extends StatefulWidget {
   const DisabledUsersPage({super.key});
@@ -15,6 +16,7 @@ class DisabledUsersPage extends StatefulWidget {
 class _DisabledUsersPageState extends State<DisabledUsersPage> {
   String? currentUserChurchID;
   String? currentUserRole;
+  final userController = Get.find<UserController>();
 
   @override
   void initState() {
@@ -23,41 +25,18 @@ class _DisabledUsersPageState extends State<DisabledUsersPage> {
   }
 
   Future<void> fetchCurrentUserData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    if (!userDoc.exists) return;
+    final userData = await userController.fetchCurrentUserData();
+    if (userData == null) return;
 
     setState(() {
-      currentUserChurchID = userDoc['ChurchID'];
-      currentUserRole = userDoc['role'];
+      currentUserChurchID = userData['ChurchID'] as String?;
+      currentUserRole = userData['role'] as String?;
     });
   }
 
-  Stream<List<Map<String, dynamic>>> getDisabledUsers() {
+  Stream<List<UserSummary>> getDisabledUsers() {
     if (currentUserChurchID == null) return const Stream.empty();
-
-    return FirebaseFirestore.instance
-        .collection("users")
-        .where("ChurchID", isEqualTo: currentUserChurchID)
-        .where("disabled", isEqualTo: true) // ✅ المستخدمين المحظورين فقط
-        .snapshots()
-        .map((snap) {
-          return snap.docs.map((d) {
-            final data = d.data();
-            return {
-              "id": d.id,
-              "full_name": data['full_name'] ?? "مستخدم",
-              "email": data['email'] ?? "",
-              "role": data['role'] ?? "User",
-              "profileImageUrl": data['profileImageUrl'],
-              "Season": data['Season'],
-            };
-          }).toList();
-        });
+    return userController.watchDisabledUsers(currentUserChurchID!);
   }
 
   @override
@@ -77,7 +56,7 @@ class _DisabledUsersPageState extends State<DisabledUsersPage> {
         ),
       ),
 
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: StreamBuilder<List<UserSummary>>(
         stream: getDisabledUsers(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -93,7 +72,7 @@ class _DisabledUsersPageState extends State<DisabledUsersPage> {
             itemCount: users.length,
             itemBuilder: (context, index) {
               final u = users[index];
-              final photoUrl = u['profileImageUrl'];
+              final photoUrl = u.profileImageUrl;
               return Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 child: Card(
@@ -109,12 +88,10 @@ class _DisabledUsersPageState extends State<DisabledUsersPage> {
                                 as ImageProvider,
                     ),
                     title: Text(
-                      u['full_name'],
+                      u.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      "البريد: ${u['email']} \nالفصل: ${u['Season']}",
-                    ),
+                    subtitle: Text("البريد: ${u.email} \nالفصل: ${u.season}"),
                     trailing:
                         (currentUserRole == "Admin" ||
                             currentUserRole == "SuperAdmin")
@@ -124,15 +101,11 @@ class _DisabledUsersPageState extends State<DisabledUsersPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        EditUserPage(userID: u['id']),
+                                    builder: (_) => EditUserPage(userID: u.id),
                                   ),
                                 );
                               } else if (val == "enable") {
-                                await FirebaseFirestore.instance
-                                    .collection("users")
-                                    .doc(u['id'])
-                                    .update({"disabled": false});
+                                await userController.enableUser(u.id);
                               }
                             },
                             itemBuilder: (_) => [

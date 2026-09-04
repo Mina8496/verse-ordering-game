@@ -1,10 +1,11 @@
 // ignore_for_file: unnecessary_cast
-import 'package:aner_astaner/Data/model/User_Controller.dart';
-import 'package:aner_astaner/Data/model/User_Model.dart';
+import 'package:aner_astaner/features/user/domain/entities/user_model.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class ExamSettingsDialog extends StatefulWidget {
   final String? church;
@@ -44,7 +45,7 @@ class _ExamSettingsDialogState extends State<ExamSettingsDialog> {
   String? selectedBook;
   String? selectedChapter;
   UserModel? userModel;
-  final userController = UserController();
+  UserController get userController => Get.find<UserController>();
 
   DateTime? examStartDate;
   DateTime? examEndDate;

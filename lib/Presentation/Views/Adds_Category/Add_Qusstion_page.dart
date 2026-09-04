@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/question/presentation/controllers/question_controller.dart';
+import 'package:get/get.dart';
 
 class addQusstionPage extends StatefulWidget {
   static const String kFixedExameID = "nFL11C4v8fPRqIgG0ZAe";
@@ -46,42 +47,36 @@ class _addQusstionPageState extends State<addQusstionPage> {
         } else if (_correctOptionIndex > index) {
           _correctOptionIndex--;
         }
-        _optionControllers.removeAt(index);
+        _optionControllers.removeAt(index).dispose();
       });
     }
   }
 
   void _submitQuestion() async {
     if (_formKey.currentState!.validate()) {
-      Map<String, dynamic> options = {};
+      final Map<String, bool> options = {};
       for (int i = 0; i < _optionControllers.length; i++) {
         options[_optionControllers[i].text.trim()] = (i == _correctOptionIndex);
       }
 
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.ChurchID) // ← اسم الوثيقة في Churches
-          .collection("Chapters")
-          .doc(widget.ChapterID) // ← اسم الوثيقة في Chapters
-          .collection("Exames")
-          .doc(addQusstionPage.kFixedExameID) // ← اسم الوثيقة في Exames
-          .collection("Alangel")
-          .doc(widget.AlngelID)
-          .collection("Alshahat")
-          .doc(widget.AlshahatID)
-          .collection("Qusstions")
-          .add({
-        'Quiz': _quizController.text.trim(),
-        'options': options,
-      });
-
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إضافة السؤال بنجاح')),
+      await Get.find<QuestionController>().addQuestion(
+        churchId: widget.ChurchID,
+        chapterId: widget.ChapterID,
+        categoryId: widget.AlngelID,
+        sectionId: widget.AlshahatID,
+        quiz: _quizController.text.trim(),
+        options: options,
       );
 
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إضافة السؤال بنجاح')));
+
       _quizController.clear();
-      _optionControllers.forEach((controller) => controller.clear());
+      for (final controller in _optionControllers) {
+        controller.dispose();
+      }
       setState(() {
         _optionControllers = [];
         _correctOptionIndex = 0;
@@ -89,6 +84,15 @@ class _addQusstionPageState extends State<addQusstionPage> {
         _addOption();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _quizController.dispose();
+    for (final controller in _optionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -126,8 +130,9 @@ class _addQusstionPageState extends State<addQusstionPage> {
                     Expanded(
                       child: TextFormField(
                         controller: controller,
-                        decoration:
-                            InputDecoration(labelText: 'الخيار ${index + 1}'),
+                        decoration: InputDecoration(
+                          labelText: 'الخيار ${index + 1}',
+                        ),
                         validator: (value) =>
                             value!.isEmpty ? 'أدخل الخيار' : null,
                       ),

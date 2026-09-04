@@ -1,10 +1,9 @@
 // ignore_for_file: unused_local_variable, use_build_context_synchronously, body_might_complete_normally_nullable, avoid_print
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
+import 'package:aner_astaner/features/auth/data/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 
 class InitalLogin extends StatefulWidget {
   const InitalLogin({super.key});
@@ -14,12 +13,9 @@ class InitalLogin extends StatefulWidget {
 }
 
 class _InitalLoginState extends State<InitalLogin> {
-  TextEditingController newEmail = TextEditingController();
-  TextEditingController newPassword = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   GlobalKey<FormState> formstate = GlobalKey<FormState>();
   bool isLoading = false;
+  final AuthService authService = Get.find<AuthService>();
 
   Future<void> signInWithGoogle(BuildContext context) async {
     setState(() {
@@ -27,49 +23,17 @@ class _InitalLoginState extends State<InitalLogin> {
     });
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(
-        credential,
-      );
-      final User? user = userCredential.user;
+      final user = await authService.signInWithGoogle(ensureProfile: false);
 
       if (user != null) {
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final userProfile = await authService.getUserProfile(user);
 
-        if (!userDoc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'name': user.displayName,
-            'role': 'User',
-            'status': 'pending',
-          });
+        if (userProfile == null) {
+          await authService.ensureUserProfile(user);
 
           Navigator.pushReplacementNamed(context, 'comLogin');
         } else {
-          String role = userDoc['role'];
-          if (role == 'Admin') {
-            Navigator.pushReplacementNamed(context, 'MasterHome');
-          } else {
-            Navigator.pushReplacementNamed(context, 'MasterHome');
-          }
+          Navigator.pushReplacementNamed(context, 'MasterHome');
         }
       }
     } catch (e) {
@@ -84,32 +48,6 @@ class _InitalLoginState extends State<InitalLogin> {
     }
   }
 
-  // Future<UserCredential?> signInWithFacebook() async {
-  //   try {
-  //     final LoginResult result = await FacebookAuth.instance.login();
-
-  //     if (result.status == LoginStatus.success) {
-  //       final AccessToken? accessToken = result.accessToken;
-
-  //       if (accessToken != null) {
-  //         print("Access Token: ${accessToken.toJson()}"); // Debugging
-
-  //         // Use the access token to create a Firebase credential
-  //         final OAuthCredential credential =
-  //             FacebookAuthProvider.credential(accessToken.tokenString);
-
-  //         // Sign in to Firebase
-  //         return await FirebaseAuth.instance.signInWithCredential(credential);
-  //       }
-  //     } else {
-  //       print("Facebook Login Failed: ${result.message}");
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print("Error during Facebook Login: $e");
-  //     return null;
-  //   }
-  // }
   @override
   Widget build(BuildContext context) {
     return Scaffold(

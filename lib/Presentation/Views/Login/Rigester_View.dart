@@ -1,6 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:aner_astaner/Data/Firebase/auth_service.dart';
+import 'package:aner_astaner/features/auth/data/services/auth_service.dart';
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/NextButton.dart';
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class RigesterView extends StatefulWidget {
   @override
@@ -18,7 +19,7 @@ class _RigesterViewState extends State<RigesterView> {
   final TextEditingController newEmail = TextEditingController();
   final TextEditingController newPassword = TextEditingController();
   final GlobalKey<FormState> formstate = GlobalKey<FormState>();
-  final authService = AuthService();
+  AuthService get authService => Get.find<AuthService>();
   bool isLoading = false;
 
   @override
@@ -52,8 +53,10 @@ class _RigesterViewState extends State<RigesterView> {
               Navigator.pop(context);
               if (onOk != null) onOk();
             },
-            child: Text("حسنًا",
-                style: TextStyle(color: isError ? Colors.red : Colors.blue)),
+            child: Text(
+              "حسنًا",
+              style: TextStyle(color: isError ? Colors.red : Colors.blue),
+            ),
           ),
         ],
       ),
@@ -113,7 +116,7 @@ class _RigesterViewState extends State<RigesterView> {
                     hintText: "ادخل ايميل جديد",
                     inputType: TextInputType.emailAddress,
                     validator: (val) =>
-                    val!.isEmpty ? "لا يمكن أن يكون فارغًا" : null,
+                        val!.isEmpty ? "لا يمكن أن يكون فارغًا" : null,
                   ),
 
                   SizedBox(height: 12.h),
@@ -125,7 +128,7 @@ class _RigesterViewState extends State<RigesterView> {
                     inputType: TextInputType.visiblePassword,
                     obscureText: true,
                     validator: (val) =>
-                    val!.isEmpty ? "لا يمكن أن يكون فارغًا" : null,
+                        val!.isEmpty ? "لا يمكن أن يكون فارغًا" : null,
                   ),
 
                   SizedBox(height: 25.h),
@@ -174,7 +177,7 @@ class _RigesterViewState extends State<RigesterView> {
                             await _showMessage(
                               title: "تأكيد البريد",
                               message:
-                              "تم إرسال رابط تأكيد إلى بريدك الإلكتروني. من فضلك قم بتأكيده أولاً.",
+                                  "تم إرسال رابط تأكيد إلى بريدك الإلكتروني. من فضلك قم بتأكيده أولاً.",
                               onOk: () async {
                                 final userDoc = FirebaseFirestore.instance
                                     .collection('users')
@@ -204,7 +207,7 @@ class _RigesterViewState extends State<RigesterView> {
                           String message;
                           if (e.code == 'weak-password') {
                             message =
-                            'كلمة المرور ضعيفة جدًا. اختر كلمة مرور أقوى.';
+                                'كلمة المرور ضعيفة جدًا. اختر كلمة مرور أقوى.';
                           } else {
                             message = e.message ?? 'حدث خطأ أثناء التسجيل.';
                           }
@@ -300,8 +303,9 @@ class _RigesterViewState extends State<RigesterView> {
           Navigator.pop(context); // Close loading
 
           if (user != null) {
-            final userDoc =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
+            final userDoc = FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid);
             final snapshot = await userDoc.get();
 
             if (snapshot.exists) {

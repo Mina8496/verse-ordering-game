@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/exam_settings/domain/entities/exam_setting.dart';
+import 'package:aner_astaner/features/exam_settings/presentation/controllers/exam_settings_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:get/get.dart';
 
 class AllExamsPage extends StatefulWidget {
   final String? churchId;
@@ -18,7 +21,8 @@ class AllExamsPage extends StatefulWidget {
 }
 
 class _AllExamsPageState extends State<AllExamsPage> {
-  late Future<List<Map<String, dynamic>>> _examsFuture;
+  late Future<List<ExamSetting>> _examsFuture;
+  final controller = Get.find<ExamSettingsController>();
 
   @override
   void initState() {
@@ -26,33 +30,19 @@ class _AllExamsPageState extends State<AllExamsPage> {
     _examsFuture = _initAndFetch();
   }
 
-  Future<List<Map<String, dynamic>>> _initAndFetch() async {
+  Future<List<ExamSetting>> _initAndFetch() async {
     await initializeDateFormatting('ar', null);
     return await fetchAllExams();
   }
 
-  Future<List<Map<String, dynamic>>> fetchAllExams() async {
-    final settingsSnap = await FirebaseFirestore.instance
-        .collection('Churches')
-        .doc(widget.churchId)
-        .collection('Chapters')
-        .doc(widget.chapterId)
-        .collection('Exames')
-        .doc('nFL11C4v8fPRqIgG0ZAe')
-        .collection('Settings')
-        .get();
-
-    List<Map<String, dynamic>> allExams = [];
-    for (var setting in settingsSnap.docs) {
-      final data = setting.data();
-      print('📅 Exam ${setting.id} data: $data'); // ✅ للطباعة والتحقق من القيم
-      allExams.add({
-        'examId': 'nFL11C4v8fPRqIgG0ZAe',
-        'settingId': setting.id,
-        'data': data,
-      });
+  Future<List<ExamSetting>> fetchAllExams() {
+    if (widget.churchId == null || widget.chapterId == null) {
+      return Future.value(const <ExamSetting>[]);
     }
-    return allExams;
+    return controller.fetchAllSettings(
+      churchId: widget.churchId!,
+      chapterId: widget.chapterId!,
+    );
   }
 
   // ✅ دالة آمنة لتحويل أي قيمة إلى DateTime
@@ -93,16 +83,13 @@ class _AllExamsPageState extends State<AllExamsPage> {
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance
-          .collection('Churches')
-          .doc(widget.churchId)
-          .collection('Chapters')
-          .doc(widget.chapterId)
-          .collection('Exames')
-          .doc(examId)
-          .collection('Settings')
-          .doc(settingId)
-          .delete();
+      if (widget.churchId != null && widget.chapterId != null) {
+        await controller.deleteSetting(
+          churchId: widget.churchId!,
+          chapterId: widget.chapterId!,
+          settingId: settingId,
+        );
+      }
 
       ScaffoldMessenger.of(
         context,
@@ -129,7 +116,7 @@ class _AllExamsPageState extends State<AllExamsPage> {
         backgroundColor: Colors.grey.shade600,
         elevation: 3,
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<ExamSetting>>(
         future: _examsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -152,16 +139,15 @@ class _AllExamsPageState extends State<AllExamsPage> {
             itemCount: exams.length,
             itemBuilder: (context, index) {
               final exam = exams[index];
-              final data = exam['data'] ?? {};
-              final book = data['bookTitle'] ?? 'غير محدد';
-              final chapter = data['chapterTitle'] ?? 'غير محدد';
-              final duration = data['durationDays']?.toString() ?? '—';
-              final hasTimer = data['hasTimer'] == true;
-              final isRepeatable = data['isRepeatable'] == true;
+              final book = exam.bookTitle;
+              final chapter = exam.chapterTitle;
+              final duration = exam.durationDays.toString();
+              final hasTimer = exam.hasTimer;
+              final isRepeatable = exam.isRepeatable;
 
-              final createdAt = toDate(data['createdAt']);
-              final startDate = toDate(data['examStart']);
-              final endDate = toDate(data['examEnd']);
+              final createdAt = toDate(exam.createdAt);
+              final startDate = toDate(exam.examStart);
+              final endDate = toDate(exam.examEnd);
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -229,7 +215,7 @@ class _AllExamsPageState extends State<AllExamsPage> {
                     icon: const Icon(Icons.delete, color: Colors.redAccent),
                     tooltip: "حذف الامتحان",
                     onPressed: () =>
-                        deleteExam(context, exam['examId'], exam['settingId']),
+                        deleteExam(context, 'nFL11C4v8fPRqIgG0ZAe', exam.id),
                   ),
                 ),
               );

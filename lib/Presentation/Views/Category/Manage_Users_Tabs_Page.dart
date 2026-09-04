@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/user/domain/entities/user_summary.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
+import 'package:get/get.dart';
 
 class ManageUsersPage extends StatefulWidget {
   final String churchId;
@@ -17,10 +19,10 @@ class ManageUsersPage extends StatefulWidget {
 
 class _ManageUsersPageState extends State<ManageUsersPage>
     with SingleTickerProviderStateMixin {
-
   late String currentChurch;
   late String currentClass;
   late TabController _tabController;
+  final userController = Get.find<UserController>();
 
   @override
   void initState() {
@@ -30,7 +32,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
 
     // ✅ القيم جاية من الصفحة السابقة
     currentChurch = widget.churchId.trim();
-    currentClass  = widget.chapterId.trim();
+    currentClass = widget.chapterId.trim();
   }
 
   @override
@@ -39,23 +41,12 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     super.dispose();
   }
 
-
-  Stream<QuerySnapshot> usersStream(String status) {
-  Query query = FirebaseFirestore.instance
-      .collection('users')
-      .where('ChurchID', isEqualTo: currentChurch)
-      .where('ChapterID', isEqualTo: currentClass)
-      .where('role', isEqualTo: 'User');
-
-  if (status == "all") {
-    query = query.where('status', isEqualTo: 'pending');
-  } else {
-    query = query.where('status', isEqualTo: status);
-  }
-
-  return query.orderBy('full_name').snapshots();
-}
-
+  Stream<List<UserSummary>> usersStream(String status) =>
+      userController.watchUsers(
+        churchId: currentChurch,
+        chapterId: currentClass,
+        status: status == 'all' ? 'pending' : status,
+      );
 
   void showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -67,19 +58,19 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     );
   }
 
-  Widget buildUsersList(Stream<QuerySnapshot> stream, String tab) {
-    return StreamBuilder<QuerySnapshot>(
+  Widget buildUsersList(Stream<List<UserSummary>> stream, String tab) {
+    return StreamBuilder<List<UserSummary>>(
       stream: stream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final users = snapshot.data!.docs;
+        final users = snapshot.data!;
         if (users.isEmpty) {
           return const Center(child: Text("لا يوجد مستخدمين"));
         }
-       
+
         print("My Church: $currentChurch");
         print("My Chapter: $currentClass");
 
@@ -87,8 +78,8 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           itemCount: users.length,
           itemBuilder: (context, index) {
             final user = users[index];
-            final fullName = user['full_name'] ?? '';
-            final phoneNumber = user['Phone_Namber'] ?? '';
+            final fullName = user.name;
+            final phoneNumber = user.phone;
 
             return Card(
               child: ListTile(
@@ -105,10 +96,8 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                           color: Colors.green,
                         ),
                         onPressed: () {
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.id)
-                              .update({'status': 'correct'})
+                          userController
+                              .updateUserStatus(user.id, 'correct')
                               .then((_) {
                                 showSnackBar("✅ تم نقل $fullName إلى موافق");
                               });
@@ -118,10 +107,8 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                       IconButton(
                         icon: const Icon(Icons.cancel, color: Colors.red),
                         onPressed: () {
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.id)
-                              .update({'status': 'wrong'})
+                          userController
+                              .updateUserStatus(user.id, 'wrong')
                               .then((_) {
                                 showSnackBar(
                                   "❌ تم نقل $fullName إلى غير موافق",
@@ -134,10 +121,8 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                       IconButton(
                         icon: const Icon(Icons.undo, color: Colors.blue),
                         onPressed: () {
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.id)
-                              .update({'status': 'pending'})
+                          userController
+                              .updateUserStatus(user.id, 'pending')
                               .then((_) {
                                 showSnackBar(
                                   "↩️ تم إرجاع $fullName إلى كل المستخدمين",

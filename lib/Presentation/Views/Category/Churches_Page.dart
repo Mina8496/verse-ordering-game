@@ -1,65 +1,27 @@
 import 'package:aner_astaner/Presentation/Views/Adds_Category/Add_churches_Box.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Chapters_Page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:aner_astaner/features/organization/domain/entities/organization_item.dart';
+import 'package:aner_astaner/features/organization/presentation/controllers/organization_controller.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class ChurchesPage extends StatefulWidget {
-  const ChurchesPage({Key? key}) : super(key: key);
+  const ChurchesPage({super.key});
 
   @override
   State<ChurchesPage> createState() => _ChurchesPageState();
 }
 
 class _ChurchesPageState extends State<ChurchesPage> {
-  List<QueryDocumentSnapshot> data = [];
+  List<OrganizationItem> churches = [];
   bool isLoading = true;
-  String role = "";
+  String role = '';
   String? churchId;
 
-  Future<void> getData() async {
-    setState(() => isLoading = true);
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-
-    if (!userDoc.exists) {
-      setState(() => isLoading = false);
-      return;
-    }
-
-    final userData = userDoc.data()!;
-    role = userData['role'];
-    churchId = userData['ChurchID'];
-
-    QuerySnapshot querySnapshot;
-
-    if (role == 'SuperAdmin') {
-      querySnapshot = await FirebaseFirestore.instance
-          .collection("Churches")
-          .orderBy("title", descending: false)
-          .get();
-    } else if (role == 'Admin') {
-      querySnapshot = await FirebaseFirestore.instance
-          .collection("Churches")
-          .where(FieldPath.documentId, isEqualTo: churchId)
-          .get();
-    } else {
-      querySnapshot = await FirebaseFirestore.instance
-          .collection("Churches")
-          .limit(0)
-          .get();
-    }
-
-    setState(() {
-      data = querySnapshot.docs;
-      isLoading = false;
-    });
-  }
+  final organizationController = Get.find<OrganizationController>();
+  final userController = Get.find<UserController>();
 
   @override
   void initState() {
@@ -67,62 +29,103 @@ class _ChurchesPageState extends State<ChurchesPage> {
     getData();
   }
 
-  void editChurchName(String docId, String currentName) {
-    TextEditingController nameController = TextEditingController(
-      text: currentName,
-    );
+  Future<void> getData() async {
+    setState(() => isLoading = true);
+    final userData = await userController.fetchCurrentUserData();
+    if (userData == null) {
+      if (mounted) setState(() => isLoading = false);
+      return;
+    }
 
-    showDialog(
+    role = userData['role'] as String? ?? '';
+    churchId = userData['ChurchID'] as String?;
+    churches = await organizationController.fetchChurches(
+      role: role,
+      churchId: churchId,
+    );
+    if (mounted) setState(() => isLoading = false);
+  }
+
+  Future<void> editChurchName(String id, String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("تعديل اسم الكنيسة"),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تعديل اسم الكنيسة'),
         content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: "اسم الكنيسة الجديد"),
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'اسم الكنيسة الجديد'),
         ),
         actions: [
           TextButton(
-            child: const Text("إلغاء"),
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            child: const Text("حفظ"),
             onPressed: () async {
-              if (nameController.text.trim().isNotEmpty) {
-                await FirebaseFirestore.instance
-                    .collection("Churches")
-                    .doc(docId)
-                    .update({"title": nameController.text.trim()});
-                Navigator.pop(ctx);
-                getData();
-              }
+              final name = controller.text.trim();
+              if (name.isEmpty) return;
+              await organizationController.updateChurch(id, name);
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              await getData();
             },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
+  Future<void> confirmDeleteChurch(String id) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل أنت متأكد من حذف الكنيسة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await organizationController.deleteChurch(id);
+              await getData();
+            },
+            child: const Text('نعم'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> confirmDeleteChurch(String docId) async {
-    showDialog(
+  void showChurchActions(OrganizationItem church) {
+    if (role == 'Admin') {
+      editChurchName(church.id, church.title);
+      return;
+    }
+    if (role != 'SuperAdmin') return;
+
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل أنت متأكد من حذف الكنيسة؟'),
-        actions: [
-          TextButton(
-            child: const Text('إلغاء'),
-            onPressed: () => Navigator.pop(ctx),
+      builder: (sheetContext) => Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit, color: Colors.blue),
+            title: const Text('تعديل اسم الكنيسة'),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              editChurchName(church.id, church.title);
+            },
           ),
-          ElevatedButton(
-            child: const Text('نعم'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await FirebaseFirestore.instance
-                  .collection("Churches")
-                  .doc(docId)
-                  .delete();
-              await getData();
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('حذف الكنيسة'),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              confirmDeleteChurch(church.id);
             },
           ),
         ],
@@ -145,80 +148,36 @@ class _ChurchesPageState extends State<ChurchesPage> {
         padding: EdgeInsets.all(8.0.h),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : data.isEmpty
-            ? const Center(child: Text("لا توجد كنائس لعرضها"))
+            : churches.isEmpty
+            ? const Center(child: Text('لا توجد كنائس لعرضها'))
             : GridView.builder(
-                itemCount: data.length,
+                itemCount: churches.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                 ),
-                itemBuilder: (context, i) {
+                itemBuilder: (context, index) {
+                  final church = churches[index];
                   return InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ChaptersPage(ChurchID: data[i].id),
-                        ),
-                      );
-                    },
-                    onLongPress: () {
-                      if (role == 'SuperAdmin') {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (ctx) => Wrap(
-                            children: [
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
-                                ),
-                                title: const Text("تعديل اسم الكنيسة"),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  editChurchName(
-                                    data[i].id,
-                                    data[i]["title"].toString(),
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                title: const Text("حذف الكنيسة"),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  confirmDeleteChurch(data[i].id);
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      } else if (role == 'Admin') {
-                        editChurchName(data[i].id, data[i]["title"].toString());
-                      }
-                    },
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ChaptersPage(ChurchID: church.id),
+                      ),
+                    ),
+                    onLongPress: () => showChurchActions(church),
                     child: Card(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(15.dg),
-                            child: Image.asset(
-                              "assets/images/Splash_View2.png",
-                              height: 100.h,
-                            ),
+                          Image.asset(
+                            'assets/images/Splash_View2.png',
+                            height: 100.h,
                           ),
-                          Center(
-                            child: Text(
-                              "${data[i]["title"]}",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          Text(
+                            church.title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -231,13 +190,11 @@ class _ChurchesPageState extends State<ChurchesPage> {
       floatingActionButton: role == 'SuperAdmin'
           ? FloatingActionButton(
               backgroundColor: Colors.amber,
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (ctx) => AddChurchesBox(onSuccess: () => getData()),
-                );
-              },
+              onPressed: () => showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AddChurchesBox(onSuccess: getData),
+              ),
               child: const Icon(Icons.add),
             )
           : null,

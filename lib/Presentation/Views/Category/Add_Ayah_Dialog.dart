@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/bible_verses/presentation/controllers/bible_verse_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddAyahDialog extends StatefulWidget {
   final String? churchID;
@@ -23,18 +24,13 @@ class _AddAyahDialogState extends State<AddAyahDialog> {
     if (_formKey.currentState!.validate()) {
       final words = _ayahController.text.trim().split(RegExp(r'\s+'));
 
-      final existingDocs = await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.churchID)
-          .collection("Chapters")
-          .doc(widget.chapterID)
-          .collection("Exames")
-          .doc("nFL11C4v8fPRqIgG0ZAe")
-          .collection("AyatQuiz")
-          .where('words', isEqualTo: words)
-          .get();
-
-      if (existingDocs.docs.isNotEmpty) {
+      if (widget.churchID == null || widget.chapterID == null) return;
+      final controller = Get.find<BibleVerseController>();
+      if (await controller.verseExists(
+        churchId: widget.churchID!,
+        chapterId: widget.chapterID!,
+        words: words,
+      )) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("❗️هذه الآية موجودة بالفعل")),
@@ -42,21 +38,23 @@ class _AddAyahDialogState extends State<AddAyahDialog> {
         return;
       }
 
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.churchID)
-          .collection("Chapters")
-          .doc(widget.chapterID)
-          .collection("Exames")
-          .doc("nFL11C4v8fPRqIgG0ZAe")
-          .collection("AyatQuiz")
-          .add({'words': words, 'timestamp': FieldValue.serverTimestamp()});
+      await controller.addVerse(
+        churchId: widget.churchID!,
+        chapterId: widget.chapterID!,
+        words: words,
+      );
 
       Navigator.pop(context);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("✅ تم إضافة الآية بنجاح")));
     }
+  }
+
+  @override
+  void dispose() {
+    _ayahController.dispose();
+    super.dispose();
   }
 
   @override

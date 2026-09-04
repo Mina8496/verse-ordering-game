@@ -1,7 +1,9 @@
 import 'package:aner_astaner/Presentation/Views/Login/Edit_User_Page.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/user/domain/entities/user_summary.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class DataAdmainChurchesPage extends StatefulWidget {
   final String? church;
@@ -19,39 +21,21 @@ class DataAdmainChurchesPage extends StatefulWidget {
 
 class _DataAdmainChurchesPageState extends State<DataAdmainChurchesPage> {
   String? selectedRole;
-  String? selectedChurch;
   String searchQuery = '';
-  List<String> churchesList = [];
+  final userController = Get.find<UserController>();
 
   @override
   void initState() {
     super.initState();
-    fetchChurches();
-  }
-
-  void fetchChurches() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('Churches')
-        .get();
-    setState(() {
-      churchesList = snapshot.docs
-          .map((doc) => doc['title'] as String)
-          .toList();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    Query usersQuery = FirebaseFirestore.instance
-        .collection('users')
-        .where('role', isNotEqualTo: 'SuperAdmin')
-        .where('ChurchID', isEqualTo: widget.church)
-        .where('ChapterID', isEqualTo: widget.chapter)
-        .orderBy('role');
-
-    if (selectedRole != null) {
-      usersQuery = usersQuery.where('role', isEqualTo: selectedRole);
-    }
+    final usersStream = userController.watchUsersByOrganization(
+      churchId: widget.church!,
+      chapterId: widget.chapter!,
+      role: selectedRole,
+    );
     // if (selectedChurch != null) {
     //   usersQuery = usersQuery.where('Church', isEqualTo: selectedChurch);
     // }
@@ -114,19 +98,18 @@ class _DataAdmainChurchesPageState extends State<DataAdmainChurchesPage> {
             // ),
             SizedBox(height: 12.h),
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: usersQuery.snapshots(),
+              child: StreamBuilder<List<UserSummary>>(
+                stream: usersStream,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final users = snapshot.data!.docs.where((doc) {
-                    final fullName = doc.data().toString().contains('full_name')
-                        ? (doc['full_name'] ?? '').toString().toLowerCase()
-                        : '';
-                    return fullName.contains(searchQuery);
-                  }).toList();
+                  final users = snapshot.data!
+                      .where(
+                        (user) => user.name.toLowerCase().contains(searchQuery),
+                      )
+                      .toList();
 
                   if (users.isEmpty) {
                     return const Center(
@@ -139,19 +122,10 @@ class _DataAdmainChurchesPageState extends State<DataAdmainChurchesPage> {
                     separatorBuilder: (context, _) => SizedBox(height: 10.h),
                     itemBuilder: (context, index) {
                       final user = users[index];
-                      final fullName =
-                          user.data().toString().contains('full_name')
-                          ? (user['full_name'] ?? '')
-                          : '';
-                      final email = user.data().toString().contains('email')
-                          ? (user['email'] ?? '')
-                          : '';
-                      final church = user.data().toString().contains('Church')
-                          ? (user['Church'] ?? '')
-                          : '';
-                      final role = user.data().toString().contains('role')
-                          ? (user['role'] ?? '')
-                          : '';
+                      final fullName = user.name;
+                      final email = user.email;
+                      final church = widget.church ?? '';
+                      final role = user.role;
 
                       return Card(
                         elevation: 3,

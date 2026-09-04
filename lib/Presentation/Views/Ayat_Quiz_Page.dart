@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:aner_astaner/Presentation/Controller/AudioController.dart';
+import 'package:aner_astaner/features/audio/presentation/controllers/audio_controller.dart';
 import 'package:aner_astaner/Presentation/Views/MasterHome_Page.dart';
 import 'package:aner_astaner/Presentation/widgets/ProgressTimer.dart';
 import 'package:aner_astaner/Presentation/widgets/result_Box.dart';
@@ -111,8 +111,7 @@ class _VersesExamQuizPageState extends State<VersesExamQuizPage>
       setState(() => showAnimation = true);
     });
     final audio = Get.find<AudioController>();
-    audio.isPlaying.value = false;
-    audio.player.pause();
+    audio.pauseMusic();
   }
 
   Future<void> _prepareAudio() async {
@@ -574,7 +573,7 @@ class _VersesExamQuizPageState extends State<VersesExamQuizPage>
     _shakeController.dispose();
     _bounceController.dispose();
     final audio = Get.find<AudioController>();
-    audio.player.play();
+    audio.resumeMusic();
     super.dispose();
   }
 

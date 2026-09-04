@@ -1,8 +1,8 @@
-// ignore_for_file: unused_local_variable
+import 'package:aner_astaner/features/chapter/presentation/controllers/chapter_controller.dart';
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class addAlshahatPage extends StatefulWidget {
   const addAlshahatPage({required this.addAlshahat});
@@ -14,59 +14,53 @@ class addAlshahatPage extends StatefulWidget {
 }
 
 class _addAlshahatPageState extends State<addAlshahatPage> {
-  GlobalKey<FormState> globalKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> globalKey = GlobalKey<FormState>();
 
-  TextEditingController title = TextEditingController();
+  final TextEditingController title = TextEditingController();
 
   bool isLoading = false;
   Future<void> addNewAlshahat() async {
-    CollectionReference Alshahat = FirebaseFirestore.instance
-        .collection('Alangel')
-        .doc(widget.addAlshahat)
-        .collection("Alshahat");
     if (globalKey.currentState!.validate()) {
       try {
-        isLoading = true;
-        setState(() {});
-        DocumentReference response = await Alshahat.add({
-          'title': title.text,
-        });
-        isLoading = false;
-        setState(() {});
-        Navigator.of(context).pushReplacementNamed("addAlshahatPage");
-
-        ///
+        setState(() => isLoading = true);
+        await Get.find<ChapterController>(
+          tag: widget.addAlshahat,
+        ).addChapter(title.text.trim());
+        if (mounted) Navigator.of(context).pop();
       } catch (e) {
         print("Erorrrrrror : $e");
+      } finally {
+        if (mounted) setState(() => isLoading = false);
       }
     }
-    // Call the user's CollectionReference to add a new use
+  }
+
+  @override
+  void dispose() {
+    title.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('اضافة الأصحاحات'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('اضافة الأصحاحات'), centerTitle: true),
       body: Form(
         key: globalKey,
         child: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 25, vertical: 20),
+                      horizontal: 25,
+                      vertical: 20,
+                    ),
                     child: CustomTextField(
                       validator: (val) {
-                        if (val == null) {
-                          return "لا يمكن ان يكون فارغ";
-                        }
-                        return "لا يمكن ان يكون فارغ";
+                        return val == null || val.trim().isEmpty
+                            ? "لا يمكن ان يكون فارغ"
+                            : null;
                       },
                       controller: title,
                       inputType: TextInputType.text,
@@ -75,15 +69,13 @@ class _addAlshahatPageState extends State<addAlshahatPage> {
                       obscureText: false,
                     ),
                   ),
-                  const SizedBox(
-                    height: 20,
-                  ),
+                  const SizedBox(height: 20),
                   CustomGeneralButton(
                     onPressed: () {
                       addNewAlshahat();
                     },
                     text: "أضــافـة",
-                  )
+                  ),
                 ],
               ),
       ),

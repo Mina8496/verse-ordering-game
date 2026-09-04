@@ -1,8 +1,10 @@
 import 'package:aner_astaner/Presentation/Views/Adds_Category/Add_Exames_Alngel_Box.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Exames_Alshahat_Page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/exam_catalog/domain/entities/catalog_item.dart';
+import 'package:aner_astaner/features/exam_catalog/presentation/controllers/exam_catalog_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class ExamesAlngelPage extends StatefulWidget {
   static const String kFixedExameID = "nFL11C4v8fPRqIgG0ZAe";
@@ -17,23 +19,16 @@ class ExamesAlngelPage extends StatefulWidget {
 }
 
 class _ExamesAlngelPageState extends State<ExamesAlngelPage> {
-  List<QueryDocumentSnapshot> dataExames = [];
+  List<CatalogItem> dataExames = [];
   bool isLoading = true;
+  final controller = Get.find<ExamCatalogController>();
 
   getDataExames() async {
-    dataExames.clear(); // تجنب التكرار
-
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(widget.ChurchID)
-        .collection("Chapters")
-        .doc(widget.ChapterID)
-        .collection("Exames")
-        .doc(AddExamesAlngelBox.kFixedExameID)
-        .collection("Alangel")
-        .get();
-
-    dataExames.addAll(querySnapshot.docs);
+    if (widget.ChurchID == null || widget.ChapterID == null) return;
+    dataExames = await controller.fetchCategories(
+      churchId: widget.ChurchID!,
+      chapterId: widget.ChapterID!,
+    );
 
     setState(() {
       isLoading = false;
@@ -73,16 +68,12 @@ class _ExamesAlngelPageState extends State<ExamesAlngelPage> {
             child: const Text("حفظ"),
             onPressed: () async {
               if (titleController.text.trim().isNotEmpty) {
-                await FirebaseFirestore.instance
-                    .collection("Churches")
-                    .doc(widget.ChurchID)
-                    .collection("Chapters")
-                    .doc(widget.ChapterID)
-                    .collection("Exames")
-                    .doc(AddExamesAlngelBox.kFixedExameID)
-                    .collection("Alangel")
-                    .doc(docId)
-                    .update({"title": titleController.text.trim()});
+                await controller.updateCategory(
+                  churchId: widget.ChurchID!,
+                  chapterId: widget.ChapterID!,
+                  categoryId: docId,
+                  title: titleController.text.trim(),
+                );
                 Navigator.pop(ctx);
                 getDataExames();
               }
@@ -133,30 +124,33 @@ class _ExamesAlngelPageState extends State<ExamesAlngelPage> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('اختر إجراء'),
-                          content: const Text('هل تريد تعديل الاسم أم حذف السؤال؟'),
+                          content: const Text(
+                            'هل تريد تعديل الاسم أم حذف السؤال؟',
+                          ),
                           actions: [
                             TextButton(
-                              child: const Text('حذف', style: TextStyle(color: Colors.red)),
+                              child: const Text(
+                                'حذف',
+                                style: TextStyle(color: Colors.red),
+                              ),
                               onPressed: () async {
                                 Navigator.pop(ctx);
-                                await FirebaseFirestore.instance
-                                    .collection("Churches")
-                                    .doc(widget.ChurchID)
-                                    .collection("Chapters")
-                                    .doc(widget.ChapterID)
-                                    .collection("Exames")
-                                    .doc(AddExamesAlngelBox.kFixedExameID)
-                                    .collection("Alangel")
-                                    .doc(exam.id)
-                                    .delete();
+                                await controller.deleteCategory(
+                                  churchId: widget.ChurchID!,
+                                  chapterId: widget.ChapterID!,
+                                  categoryId: exam.id,
+                                );
                                 await getDataExames();
                               },
                             ),
                             TextButton(
-                              child: const Text('تعديل', style: TextStyle(color: Colors.blue)),
+                              child: const Text(
+                                'تعديل',
+                                style: TextStyle(color: Colors.blue),
+                              ),
                               onPressed: () {
                                 Navigator.pop(ctx);
-                                editExamName(exam.id, exam["title"] ?? "");
+                                editExamName(exam.id, exam.title);
                               },
                             ),
                           ],
@@ -174,7 +168,7 @@ class _ExamesAlngelPageState extends State<ExamesAlngelPage> {
                               height: 100,
                             ),
                           ),
-                          Text("${exam["title"] ?? "بدون عنوان"}"),
+                          Text(exam.title),
                         ],
                       ),
                     ),

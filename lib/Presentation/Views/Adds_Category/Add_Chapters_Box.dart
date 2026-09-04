@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/organization/presentation/controllers/organization_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddChaptersBox extends StatefulWidget {
   final String? churchID;
@@ -16,31 +17,33 @@ class _AddChaptersBoxState extends State<AddChaptersBox> {
 
   Future<void> addChapter() async {
     if (seasonController.text.trim().isEmpty || widget.churchID == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى إدخال الفصل")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("يرجى إدخال الفصل")));
       return;
     }
 
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.churchID)
-          .collection("Chapters")
-          .add({
-        "season": seasonController.text.trim(),
-        "created_at": FieldValue.serverTimestamp(),
-      });
+      await Get.find<OrganizationController>().addChapter(
+        churchId: widget.churchID!,
+        season: seasonController.text.trim(),
+      );
 
       Navigator.of(context).pop(); // إغلاق الصندوق بعد الإضافة
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حدث خطأ: $e")));
     }
+  }
+
+  @override
+  void dispose() {
+    seasonController.dispose();
+    super.dispose();
   }
 
   @override
@@ -68,7 +71,10 @@ class _AddChaptersBoxState extends State<AddChaptersBox> {
           onPressed: isLoading ? null : addChapter,
           child: isLoading
               ? const SizedBox(
-                  width: 20, height: 20, child: CircularProgressIndicator())
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(),
+                )
               : const Text("إضافة"),
         ),
       ],

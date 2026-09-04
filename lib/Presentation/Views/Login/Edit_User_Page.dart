@@ -1,7 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
+import 'package:get/get.dart';
 
 class EditUserPage extends StatefulWidget {
   final String? userID;
@@ -25,33 +26,24 @@ class _EditUserPageState extends State<EditUserPage> {
 
   String currentUserRole =
       ""; // هنا نخزن صلاحية المستخدم الحالي (اللي فاتح التطبيق)
+  final userController = Get.find<UserController>();
 
   Future<void> fetchCurrentUser() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
     // نجيب بيانات المستخدم اللي بيفتح الصفحة
-    final currentUserDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    if (currentUserDoc.exists) {
-      currentUserRole = currentUserDoc['role'] ?? "User";
-    }
+    final currentUserData = await userController.fetchCurrentUserData();
+    currentUserRole = currentUserData?['role'] as String? ?? 'User';
 
     // نجيب بيانات المستخدم المراد تعديله
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(widget.userID)
-        .get();
+    if (widget.userID == null) return;
+    final userData = await userController.fetchUserById(widget.userID!);
 
-    if (!userDoc.exists || !mounted) return;
+    if (userData == null || !mounted) return;
 
     setState(() {
-      name = userDoc['name'] ?? "";
-      churchController = userDoc['Church'] ?? "";
+      name = userData['name'] ?? "";
+      churchController = userData['Church'] ?? "";
 
-      final birthdayData = userDoc['Birthday'];
+      final birthdayData = userData['Birthday'];
       if (birthdayData is Timestamp) {
         BirthdayController.text = birthdayData
             .toDate()
@@ -62,14 +54,14 @@ class _EditUserPageState extends State<EditUserPage> {
         BirthdayController.text = birthdayData?.toString() ?? "";
       }
 
-      GenderController = userDoc["Gender"] ?? "";
-      Phone_NamberController.text = userDoc['Phone_Namber'] ?? "";
+      GenderController = userData["Gender"] ?? "";
+      Phone_NamberController.text = userData['Phone_Namber'] ?? "";
       SeasonController =
-          userDoc['Season'] ??
+          userData['Season'] ??
           ""; // SeasonController.text = userDoc['Season'] ?? "";
-      email = userDoc['email'] ?? "";
-      full_nameController.text = userDoc['full_name'] ?? "";
-      roleController = userDoc['role'] ?? "User";
+      email = userData['email'] ?? "";
+      full_nameController.text = userData['full_name'] ?? "";
+      roleController = userData['role'] ?? "User";
     });
   }
 
@@ -80,23 +72,29 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   Future<void> saveUser() async {
-    await FirebaseFirestore.instance
-        .collection("users")
-        .doc(widget.userID)
-        .update({
-          "full_name": full_nameController.text,
-          "Gender": GenderController,
-          "Phone_Namber": Phone_NamberController.text,
-          // "Season": SeasonController.text,
-          // لو المستخدم الحالي SuperAdmin نسمح له يعدل الصلاحية
-          if (currentUserRole == "SuperAdmin") "role": roleController,
-        });
+    if (widget.userID == null) return;
+    await userController.updateUser(widget.userID!, {
+      "full_name": full_nameController.text,
+      "Gender": GenderController,
+      "Phone_Namber": Phone_NamberController.text,
+      // "Season": SeasonController.text,
+      // لو المستخدم الحالي SuperAdmin نسمح له يعدل الصلاحية
+      if (currentUserRole == "SuperAdmin") "role": roleController,
+    });
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("✅ تم تعديل بيانات المستخدم")));
 
     Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    BirthdayController.dispose();
+    Phone_NamberController.dispose();
+    full_nameController.dispose();
+    super.dispose();
   }
 
   @override

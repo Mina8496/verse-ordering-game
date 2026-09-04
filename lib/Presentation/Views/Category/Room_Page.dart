@@ -5,10 +5,10 @@ import 'package:aner_astaner/Presentation/Views/Category/ExamVersesSettingsDialo
 import 'package:aner_astaner/Presentation/Views/Category/Exam_Settings_Dialog.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Exames_Alngel_Page.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Manage_Users_Tabs_Page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({Key? key, this.ChapterID, this.ChurchID, this.examId})
@@ -21,48 +21,21 @@ class RoomPage extends StatefulWidget {
   State<RoomPage> createState() => _RoomPageState();
 }
 
-List<QueryDocumentSnapshot> chapters = [];
-bool isLoading = true;
-
 class _RoomPageState extends State<RoomPage> {
   bool isSuperAdmin = false;
 
   Future<void> checkIfSuperAdmin() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(user.uid)
-        .get();
-
-    if (userDoc.exists) {
-      final role = userDoc.get("role");
+    final userData = await Get.find<UserController>().fetchCurrentUserData();
+    if (userData != null) {
       setState(() {
-        isSuperAdmin = role == "SuperAdmin";
+        isSuperAdmin = userData['role'] == 'SuperAdmin';
       });
     }
-  }
-
-  Future<void> fetchChapters() async {
-    setState(() => isLoading = true);
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(widget.ChurchID)
-        .collection("Chapters")
-        .get();
-
-    setState(() {
-      chapters = snapshot.docs;
-      isLoading = false;
-    });
   }
 
   @override
   void initState() {
     super.initState();
-    fetchChapters();
     checkIfSuperAdmin();
   }
 

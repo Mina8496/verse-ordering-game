@@ -1,5 +1,7 @@
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/NextButton.dart';
+import 'package:aner_astaner/features/organization/presentation/controllers/organization_controller.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl/intl.dart';
 import 'package:cupertino_date_textbox/cupertino_date_textbox.dart';
+import 'package:get/get.dart';
 
 class CompleteInformationBody extends StatefulWidget {
   const CompleteInformationBody({super.key});
@@ -21,23 +24,23 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
   DateTime _selectedDateTime = DateTime.now();
   bool isLoading = false;
 
-  TextEditingController fullName = TextEditingController();
-  TextEditingController phoneNamber = TextEditingController();
-  TextEditingController cumbirthday = TextEditingController();
-  TextEditingController church = TextEditingController();
-  TextEditingController season = TextEditingController();
+  final TextEditingController fullName = TextEditingController();
+  final TextEditingController phoneNamber = TextEditingController();
+  final TextEditingController cumbirthday = TextEditingController();
+  final TextEditingController church = TextEditingController();
+  final TextEditingController season = TextEditingController();
   String GenderController = "";
 
   // String _selectedGender = genderMap.keys.first;
-  GlobalKey<FormState> formstate = GlobalKey<FormState>();
+  final GlobalKey<FormState> formstate = GlobalKey<FormState>();
 
   List<DropdownMenuItem<String>> dataChurches = [];
   Map<String, String> churchNameToId = {}; // name → ID
   Map<String, String> seasonNameToId = {}; // الموسم → ID
+  final organizationController = Get.find<OrganizationController>();
+  final userController = Get.find<UserController>();
 
   List<DropdownMenuItem<String>> dataseason = [];
-
-  CollectionReference users = FirebaseFirestore.instance.collection('users');
 
   @override
   void initState() {
@@ -49,13 +52,11 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
     dataChurches.clear();
     churchNameToId.clear();
 
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .get();
+    final churches = await organizationController.fetchAllChurches();
 
-    for (var doc in querySnapshot.docs) {
-      final String churchName = doc['title'];
-      final String churchId = doc.id;
+    for (final item in churches) {
+      final churchName = item.title;
+      final churchId = item.id;
 
       churchNameToId[churchName] = churchId;
 
@@ -81,17 +82,13 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
     final selectedChurchId = churchNameToId[church.text];
     if (selectedChurchId == null) return;
 
-    final chaptersCollection = FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(selectedChurchId)
-        .collection("Chapters");
+    final chapters = await organizationController.fetchAllChapters(
+      selectedChurchId,
+    );
 
-    final querySnapshot = await chaptersCollection.get();
-
-    for (var doc in querySnapshot.docs) {
-      final dynamic seasonData = doc['season'];
-      if (seasonData != null) {
-        final seasonStr = seasonData.toString();
+    for (final item in chapters) {
+      final seasonStr = item.title;
+      if (seasonStr.isNotEmpty) {
         if (!dataseason.any((item) => item.value == seasonStr)) {
           dataseason.add(
             DropdownMenuItem<String>(
@@ -104,7 +101,7 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
             ),
           );
           // نحفظ ID الفصل
-          seasonNameToId[seasonStr] = doc.id;
+          seasonNameToId[seasonStr] = item.id;
         }
       }
     }
@@ -112,47 +109,21 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
     setState(() {});
   }
 
-  Future<void> updateUser({
-    required String uid,
-    required Map<String, dynamic> userData,
-    required String selectedChurchId,
-    required String selectedChapterId,
-  }) async {
-    final firestore = FirebaseFirestore.instance;
-
-    try {
-      final batch = firestore.batch();
-
-      // المرجع الأول: users
-      final userRef = firestore.collection("users").doc(uid);
-
-      // المرجع الثاني: Approved
-      final approvedRef = firestore
-          .collection("Churches")
-          .doc(selectedChurchId)
-          .collection("Chapters")
-          .doc(selectedChapterId)
-          .collection("Approved")
-          .doc(uid);
-
-      // إضافة العمليتين للـ batch
-      batch.set(userRef, userData);
-      batch.set(approvedRef, userData);
-
-      // تنفيذ العمليات كلها مره واحدة
-      await batch.commit();
-      print("✅ اهلا بك في التطبيق");
-    } catch (e) {
-      print("❌ Error while updating user: $e");
-      rethrow;
-    }
-  }
-
   void onBirthdayChange(DateTime birthday) {
     setState(() {
       _selectedDateTime = birthday;
       cumbirthday.text = DateFormat.yMd().format(birthday);
     });
+  }
+
+  @override
+  void dispose() {
+    fullName.dispose();
+    phoneNamber.dispose();
+    cumbirthday.dispose();
+    church.dispose();
+    season.dispose();
+    super.dispose();
   }
 
   // static final Map<String, String> genderMap = {
@@ -384,11 +355,11 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
                                   'status': 'pending',
                                 };
 
-                                await updateUser(
+                                await userController.completeUserProfile(
                                   uid: user.uid,
-                                  userData: userData,
-                                  selectedChurchId: selectedChurchId,
-                                  selectedChapterId: selectedChapterId,
+                                  data: userData,
+                                  churchId: selectedChurchId,
+                                  chapterId: selectedChapterId,
                                 );
 
                                 setState(() => isLoading = false);
@@ -402,7 +373,9 @@ class _CompleteInformationBodyState extends State<CompleteInformationBody> {
                                   fontSize: 16.0.sp,
                                 );
 
-                                Navigator.of(context).pushReplacementNamed("MasterHome");
+                                Navigator.of(
+                                  context,
+                                ).pushReplacementNamed("MasterHome");
                               }
                             }
                           },

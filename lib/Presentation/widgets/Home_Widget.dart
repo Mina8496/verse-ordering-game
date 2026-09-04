@@ -1,9 +1,9 @@
 // ignore_for_file: unused_field, use_build_context_synchronously, unnecessary_cast
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
-import 'package:aner_astaner/Data/model/User_Controller.dart';
-import 'package:aner_astaner/Data/model/User_Model.dart';
+import 'package:aner_astaner/features/user/domain/entities/user_model.dart';
+import 'package:aner_astaner/features/user/domain/repositories/profile_image_uploader.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Churches_Page.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Exames_Quiz_Page.dart';
 import 'package:aner_astaner/Presentation/Views/Login/Completw_information_body.dart';
@@ -13,15 +13,15 @@ import 'package:aner_astaner/Presentation/widgets/BubbleTopTailPainter.dart';
 import 'package:aner_astaner/Presentation/widgets/ChatBubble.dart';
 import 'package:aner_astaner/Presentation/widgets/isUser_Approved_Or_Admin.dart';
 import 'package:aner_astaner/Presentation/widgets/showHowTo_Qussyion_Dialog.dart';
+import 'package:aner_astaner/features/exam_catalog/presentation/controllers/exam_catalog_controller.dart';
+import 'package:aner_astaner/features/exam_settings/presentation/controllers/exam_settings_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,6 +35,11 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
+  final ExamCatalogController examCatalogController =
+      Get.find<ExamCatalogController>();
+  ProfileImageUploader get profileImageService => Get.find<ProfileImageUploader>();
+  final ExamSettingsController examSettingsController =
+      Get.find<ExamSettingsController>();
   String? imageUrl;
   Uint8List? imageData;
   List<DropdownMenuItem<String>> alnagelList = [];
@@ -49,8 +54,8 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   bool? selectedHasTimer;
 
   UserModel? userModel;
-  final userController = UserController();
-  List<DocumentSnapshot> data = [];
+  UserController get userController => Get.find<UserController>();
+  bool hasUserData = false;
 
   bool isLoading = true;
   bool _isStartingExam = false;
@@ -119,19 +124,12 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
     chaptersList.clear();
     if (churchId == null) return;
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(churchId)
-        .collection("Chapters")
-        .get();
-
-    for (var doc in snapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    final chapters = await examCatalogController.fetchChaptersByChurch(
+      churchId!,
+    );
+    for (final chapter in chapters) {
       chaptersList.add(
-        DropdownMenuItem(
-          value: doc.id,
-          child: Text(data['season'] ?? 'بدون اسم'),
-        ),
+        DropdownMenuItem(value: chapter.id, child: Text(chapter.title)),
       );
     }
 
@@ -154,12 +152,9 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
     String chapterId,
     String chapterTitle,
   ) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    await FirebaseFirestore.instance.collection("users").doc(uid).update({
-      "ChapterID": chapterId,
-      "Season": chapterTitle,
+    await userController.updateCurrentUser({
+      'ChapterID': chapterId,
+      'Season': chapterTitle,
     });
     if (!mounted) return;
     setState(() {
@@ -194,27 +189,14 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
     if (!mounted) return;
     setState(() => imageData = bytes);
 
-    // رفع الصورة إلى imgbb
-    const apiKey = '617c18f7c03af1e2bba0fec00c6f96ab';
-    final base64Image = base64Encode(bytes);
+    final url = await profileImageService.upload(bytes);
 
-    final response = await http.post(
-      Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey'),
-      body: {'image': base64Image, 'name': 'flutter_uploaded_image'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final url = data['data']['url'];
-
+    if (url != null) {
       if (!mounted) return;
       setState(() => imageUrl = url);
 
       // حفظ URL الصورة
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'profileImageUrl': url,
-      });
+      await userController.updateProfileImage(url);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ تم رفع الصورة وحفظ الرابط بنجاح")),
@@ -285,17 +267,10 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   }
 
   Future<void> getData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final userData = await userController.fetchCurrentUserData();
 
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-
-    if (userDoc.exists) {
-      data = [userDoc];
-      final userData = userDoc.data() as Map<String, dynamic>;
+    if (userData != null) {
+      hasUserData = true;
       churchId = userData['ChurchID'];
       chapterId = userData['ChapterID'];
       fullName = userData['full_name'];
@@ -311,18 +286,15 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
 
   Future<void> fetchAlnagel() async {
     alnagelList.clear();
-    final snapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(churchId)
-        .collection("Chapters")
-        .doc(chapterId)
-        .collection("Exames")
-        .doc(HomeWidget.kFixedExameID)
-        .collection("Alangel")
-        .get();
-    for (var doc in snapshot.docs) {
+    if (churchId == null || chapterId == null) return;
+
+    final categories = await examCatalogController.fetchCategories(
+      churchId: churchId!,
+      chapterId: chapterId!,
+    );
+    for (final category in categories) {
       alnagelList.add(
-        DropdownMenuItem(value: doc.id, child: Text(doc['title'])),
+        DropdownMenuItem(value: category.id, child: Text(category.title)),
       );
     }
     if (!mounted) return;
@@ -331,25 +303,16 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
 
   Future<void> fetchChapters(String alngelId) async {
     chaptersList.clear();
-    final snapshot = await FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(churchId)
-        .collection("Chapters")
-        .doc(chapterId)
-        .collection("Exames")
-        .doc(HomeWidget.kFixedExameID)
-        .collection("Alangel")
-        .doc(alngelId)
-        .collection("Alshahat")
-        .get();
+    if (churchId == null || chapterId == null) return;
 
-    for (var doc in snapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    final chapters = await examCatalogController.fetchChapters(
+      churchId: churchId!,
+      chapterId: chapterId!,
+      categoryId: alngelId,
+    );
+    for (final chapter in chapters) {
       chaptersList.add(
-        DropdownMenuItem(
-          value: doc.id,
-          child: Text(data['title'] ?? 'بدون عنوان'),
-        ),
+        DropdownMenuItem(value: chapter.id, child: Text(chapter.title)),
       );
     }
     if (!mounted) return;
@@ -357,42 +320,23 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   }
 
   Future<void> fetchSavedExamSettings() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final selection = await examSettingsController.fetchCurrentSelection();
+    if (selection == null || !mounted) return;
 
-    final doc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(user.uid)
-        .collection("SelectedExam")
-        .doc("Current")
-        .get();
-
-    if (doc.exists) {
-      final data = doc.data()!;
-      if (!mounted) return;
-      setState(() {
-        selectedBook = data['bookId'];
-        selectedChapter = data['chapterId'];
-        selectedDuration = data['durationDays'];
-        selectedRepeatable = data['isRepeatable'];
-        selectedHasTimer = data['hasTimer'];
-        selectedBookTitle = data['bookTitle'];
-        selectedChapterTitle = data['chapterTitle'];
-      });
-    }
+    setState(() {
+      selectedBook = selection.bookId;
+      selectedChapter = selection.chapterId;
+      selectedDuration = selection.durationDays;
+      selectedRepeatable = selection.isRepeatable;
+      selectedHasTimer = selection.hasTimer;
+      selectedBookTitle = selection.bookTitle;
+      selectedChapterTitle = selection.chapterTitle;
+    });
   }
 
   Future<bool> isUserInfoComplete() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return false;
-
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    if (!userDoc.exists) return false;
-
-    final userData = userDoc.data() as Map<String, dynamic>;
+    final userData = await userController.fetchCurrentUserData();
+    if (userData == null) return false;
 
     // الحقول المطلوبة
     return userData['full_name'] != null &&
@@ -423,7 +367,7 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
 
   Widget buildInfoText(String? value) {
     if (isLoading) return const CircularProgressIndicator();
-    if (data.isEmpty) return const Text("لا توجد بيانات متاحة");
+    if (!hasUserData) return const Text("لا توجد بيانات متاحة");
 
     if (value == null || value.isEmpty) {
       return InkWell(
@@ -550,22 +494,11 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
                                             "🧭 Church ID: $churchId | Chapter ID: $chapterId",
                                           );
 
-                                          final examRef = FirebaseFirestore
-                                              .instance
-                                              .collection('Churches')
-                                              .doc(churchId)
-                                              .collection('Chapters')
-                                              .doc(chapterId)
-                                              .collection('Exames')
-                                              .doc(
-                                                'nFL11C4v8fPRqIgG0ZAe',
-                                              ) // ← اسم الامتحان عندك
-                                              .collection('Settings');
+                                          final settings =
+                                              await examSettingsController
+                                                  .fetchSettings(chapterId!);
 
-                                          final settingsSnapshot = await examRef
-                                              .get();
-
-                                          if (settingsSnapshot.docs.isEmpty) {
+                                          if (settings.isEmpty) {
                                             Fluttertoast.showToast(
                                               msg:
                                                   "❌ لا يوجد إعدادات لهذا الامتحان",
@@ -575,53 +508,16 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
                                             return;
                                           }
 
-                                          bool foundExam = false;
-                                          Map<String, dynamic>? data;
+                                          final activeSetting = settings
+                                              .where(
+                                                (setting) =>
+                                                    setting.isAvailableOn(
+                                                      DateTime.now(),
+                                                    ),
+                                              )
+                                              .firstOrNull;
 
-                                          for (var setting
-                                              in settingsSnapshot.docs) {
-                                            final settings = setting.data();
-                                            final Timestamp? start =
-                                                settings['examStart'];
-                                            final Timestamp? end =
-                                                settings['examEnd'];
-
-                                            if (start == null || end == null)
-                                              continue;
-
-                                            final DateTime now = DateTime.now();
-                                            final DateTime nowDate = DateTime(
-                                              now.year,
-                                              now.month,
-                                              now.day,
-                                            );
-
-                                            final DateTime startDate = DateTime(
-                                              start.toDate().year,
-                                              start.toDate().month,
-                                              start.toDate().day,
-                                            );
-                                            final durationDays =
-                                                settings['durationDays'] ?? 0;
-
-                                            final DateTime endDate = startDate
-                                                .add(
-                                                  Duration(days: durationDays),
-                                                );
-
-                                            print(
-                                              "⏱️ startDate=$startDate | endDate=$endDate | now=$nowDate",
-                                            );
-
-                                            if (!nowDate.isBefore(startDate) &&
-                                                nowDate.isBefore(endDate)) {
-                                              data = settings;
-                                              foundExam = true;
-                                              break;
-                                            }
-                                          }
-
-                                          if (!foundExam) {
+                                          if (activeSetting == null) {
                                             Fluttertoast.showToast(
                                               msg:
                                                   "❌ لا يوجد امتحان متاح اليوم",
@@ -633,22 +529,21 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
 
                                           // ✅ لو وجدنا الامتحان
                                           final bookTitle =
-                                              data!['bookTitle'] ?? 'غير محدد';
+                                              activeSetting.bookTitle;
                                           final chapterTitle =
-                                              data['chapterTitle'] ??
-                                              'غير محدد';
+                                              activeSetting.chapterTitle;
                                           final durationDays =
-                                              data['durationDays'] ?? 0;
+                                              activeSetting.durationDays;
                                           final isRepeatable =
-                                              data['isRepeatable'] == true
+                                              activeSetting.isRepeatable
                                               ? "نعم"
                                               : "لا";
                                           final hasTimer =
-                                              data['hasTimer'] == true
+                                              activeSetting.hasTimer
                                               ? "نعم"
                                               : "لا";
                                           final Timestamp startTimestamp =
-                                              data['examStart'];
+                                              activeSetting.examStart!;
                                           final DateTime examEndDate =
                                               startTimestamp.toDate().add(
                                                 Duration(days: durationDays),
@@ -796,9 +691,9 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
                                                                 chapterID:
                                                                     chapterId!,
                                                                 alngelID:
-                                                                    data!['bookId'],
+                                                                    selectedBook!,
                                                                 alshahatID:
-                                                                    data['chapterId'],
+                                                                    selectedChapter!,
                                                               ),
                                                             );
                                                           },
@@ -1066,14 +961,7 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
                                 title: const Text('حذف الصورة'),
                                 onTap: () async {
                                   Navigator.pop(context);
-                                  final uid =
-                                      FirebaseAuth.instance.currentUser!.uid;
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(uid)
-                                      .update({
-                                        'profileImageUrl': FieldValue.delete(),
-                                      });
+                                  await userController.deleteProfileImage();
                                   if (!mounted) return;
                                   setState(() {
                                     imageUrl = null;

@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/exam_chapter/presentation/controllers/exam_chapter_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddExamesAlshahatBox extends StatefulWidget {
   static const String kFixedExameID = "nFL11C4v8fPRqIgG0ZAe";
@@ -7,6 +8,7 @@ class AddExamesAlshahatBox extends StatefulWidget {
   final String? ChaptersID;
   final String? ChurchID;
   final String? AlngelID;
+  final String controllerTag;
   final VoidCallback? onExameAdded;
 
   const AddExamesAlshahatBox({
@@ -15,6 +17,7 @@ class AddExamesAlshahatBox extends StatefulWidget {
     this.ChaptersID,
     this.ChurchID,
     this.AlngelID,
+    required this.controllerTag,
   }) : super(key: key);
 
   @override
@@ -32,38 +35,33 @@ class _AddExamesAlshahatBoxState extends State<AddExamesAlshahatBox> {
         widget.ChaptersID == null ||
         widget.ChurchID == null ||
         widget.AlngelID == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى إدخال اسم الاصحاح")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("يرجى إدخال اسم الاصحاح")));
       return;
     }
 
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.ChurchID)
-          .collection("Chapters")
-          .doc(widget.ChaptersID)
-          .collection("Exames")
-          .doc(AddExamesAlshahatBox.kFixedExameID)
-          .collection("Alangel")
-          .doc(widget.AlngelID)
-          .collection("Alshahat")
-          .add({
-        "title": season,
-        "created_at": FieldValue.serverTimestamp(),
-      });
+      await Get.find<ExamChapterController>(
+        tag: widget.controllerTag,
+      ).addChapter(season);
 
       widget.onExameAdded?.call();
       Navigator.of(context).pop();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")));
     }
+  }
+
+  @override
+  void dispose() {
+    seasonController.dispose();
+    super.dispose();
   }
 
   @override
@@ -91,7 +89,10 @@ class _AddExamesAlshahatBoxState extends State<AddExamesAlshahatBox> {
           onPressed: isLoading ? null : addData,
           child: isLoading
               ? const SizedBox(
-                  width: 20, height: 20, child: CircularProgressIndicator())
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(),
+                )
               : const Text("إضافة"),
         ),
       ],

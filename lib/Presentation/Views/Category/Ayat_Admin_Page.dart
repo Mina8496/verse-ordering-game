@@ -1,5 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/bible_verses/domain/entities/bible_verse.dart';
+import 'package:aner_astaner/features/bible_verses/presentation/controllers/bible_verse_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'add_ayah_dialog.dart'; // استورد الملف السابق
 
 class AyatQuizAdminPage extends StatelessWidget {
@@ -13,14 +15,16 @@ class AyatQuizAdminPage extends StatelessWidget {
     required this.chapterID,
   });
 
+  BibleVerseController get controller => Get.find<BibleVerseController>();
+
   void _showEditDialog(
     BuildContext context,
     String churchID,
     String chapterID,
     String docId,
-    List words,
+    List<String> words,
   ) {
-    final TextEditingController controller = TextEditingController(
+    final TextEditingController textController = TextEditingController(
       text: words.join(' '),
     );
 
@@ -30,7 +34,7 @@ class AyatQuizAdminPage extends StatelessWidget {
         return AlertDialog(
           title: Text('تعديل الآية'),
           content: TextFormField(
-            controller: controller,
+            controller: textController,
             textDirection: TextDirection.rtl,
             decoration: InputDecoration(
               border: OutlineInputBorder(),
@@ -44,7 +48,9 @@ class AyatQuizAdminPage extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () async {
-                final newWords = controller.text.trim().split(RegExp(r'\s+'));
+                final newWords = textController.text.trim().split(
+                  RegExp(r'\s+'),
+                );
                 if (newWords.length < 2) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('يجب إدخال آية صحيحة')),
@@ -52,19 +58,12 @@ class AyatQuizAdminPage extends StatelessWidget {
                   return;
                 }
 
-                await FirebaseFirestore.instance
-                    .collection("Churches")
-                    .doc(churchID)
-                    .collection("Chapters")
-                    .doc(chapterID)
-                    .collection("Exames")
-                    .doc(kFixedExameID)
-                    .collection("AyatQuiz")
-                    .doc(docId)
-                    .update({
-                      'words': newWords,
-                      'timestamp': FieldValue.serverTimestamp(),
-                    });
+                await this.controller.updateVerse(
+                  churchId: churchID,
+                  chapterId: chapterID,
+                  verseId: docId,
+                  words: newWords,
+                );
 
                 Navigator.pop(context);
               },
@@ -84,17 +83,11 @@ class AyatQuizAdminPage extends StatelessWidget {
           title: Text('الآيات المضافة'),
           content: SizedBox(
             width: double.maxFinite,
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection("Churches")
-                  .doc(churchID)
-                  .collection("Chapters")
-                  .doc(chapterID)
-                  .collection("Exames")
-                  .doc(kFixedExameID)
-                  .collection("AyatQuiz")
-                  .orderBy("timestamp", descending: true)
-                  .snapshots(),
+            child: StreamBuilder<List<BibleVerse>>(
+              stream: controller.watchVerses(
+                churchId: churchID,
+                chapterId: chapterID,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Text("حدث خطأ");
@@ -103,7 +96,7 @@ class AyatQuizAdminPage extends StatelessWidget {
                   return Center(child: CircularProgressIndicator());
                 }
 
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
                 if (docs.isEmpty) {
                   return Text("لا توجد آيات مضافة بعد.");
                 }
@@ -111,8 +104,8 @@ class AyatQuizAdminPage extends StatelessWidget {
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final words = (doc['words'] as List).join(' ');
+                    final verse = docs[index];
+                    final words = verse.text;
                     return ListTile(
                       title: Text(words, textDirection: TextDirection.rtl),
                       trailing: Row(
@@ -126,24 +119,19 @@ class AyatQuizAdminPage extends StatelessWidget {
                                 context,
                                 churchID,
                                 chapterID,
-                                doc.id,
-                                doc['words'],
+                                verse.id,
+                                verse.words,
                               );
                             },
                           ),
                           IconButton(
                             icon: Icon(Icons.delete, color: Colors.red),
                             onPressed: () async {
-                              await FirebaseFirestore.instance
-                                  .collection("Churches")
-                                  .doc(churchID)
-                                  .collection("Chapters")
-                                  .doc(chapterID)
-                                  .collection("Exames")
-                                  .doc(kFixedExameID)
-                                  .collection("AyatQuiz")
-                                  .doc(doc.id)
-                                  .delete();
+                              await controller.deleteVerse(
+                                churchId: churchID,
+                                chapterId: chapterID,
+                                verseId: verse.id,
+                              );
                             },
                           ),
                         ],
@@ -167,16 +155,6 @@ class AyatQuizAdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ayatRef = FirebaseFirestore.instance
-        .collection("Churches")
-        .doc(churchID)
-        .collection("Chapters")
-        .doc(chapterID)
-        .collection("Exames")
-        .doc("nFL11C4v8fPRqIgG0ZAe")
-        .collection("AyatQuiz")
-        .orderBy("timestamp", descending: true);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("إدارة آيات"),
@@ -193,23 +171,27 @@ class AyatQuizAdminPage extends StatelessWidget {
         backgroundColor: Colors.amber,
         child: const Icon(Icons.add),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: ayatRef.snapshots(),
+      body: StreamBuilder<List<BibleVerse>>(
+        stream: churchID == null || chapterID == null
+            ? const Stream.empty()
+            : controller.watchVerses(
+                churchId: churchID!,
+                chapterId: chapterID!,
+              ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("لا توجد آيات مضافة بعد"));
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final wordsList = doc['words'] as List<dynamic>;
-              final words = wordsList.join(" ");
+              final verse = snapshot.data![index];
+              final words = verse.text;
 
               return Card(
                 shape: RoundedRectangleBorder(
@@ -227,8 +209,8 @@ class AyatQuizAdminPage extends StatelessWidget {
                             context,
                             churchID!,
                             chapterID!,
-                            doc.id,
-                            wordsList,
+                            verse.id,
+                            verse.words,
                           );
                         },
                       ),
@@ -257,16 +239,11 @@ class AyatQuizAdminPage extends StatelessWidget {
                             ),
                           );
                           if (confirm == true) {
-                            await FirebaseFirestore.instance
-                                .collection("Churches")
-                                .doc(churchID)
-                                .collection("Chapters")
-                                .doc(chapterID)
-                                .collection("Exames")
-                                .doc(kFixedExameID)
-                                .collection("AyatQuiz")
-                                .doc(doc.id)
-                                .delete();
+                            await controller.deleteVerse(
+                              churchId: churchID!,
+                              chapterId: chapterID!,
+                              verseId: verse.id,
+                            );
                           }
                         },
                       ),

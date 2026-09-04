@@ -1,8 +1,8 @@
 // ignore_for_file: unnecessary_cast, non_constant_identifier_names
 import 'dart:async';
-import 'package:aner_astaner/Presentation/Controller/AudioController.dart';
-import 'package:aner_astaner/Presentation/Controller/ExamController.dart';
-import 'package:aner_astaner/Presentation/Controller/constants.dart';
+import 'package:aner_astaner/features/audio/presentation/controllers/audio_controller.dart';
+import 'package:aner_astaner/features/exam/presentation/controllers/exam_controller.dart';
+import 'package:aner_astaner/core/constants/app_colors.dart';
 import 'package:aner_astaner/Presentation/Views/MasterHome_Page.dart';
 import 'package:aner_astaner/Presentation/widgets/ProgressTimer.dart';
 import 'package:aner_astaner/Presentation/widgets/option_card.dart';
@@ -90,8 +90,7 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     backgroundPlayer.pause();
     final audio = Get.find<AudioController>();
 
-    audio.isPlaying.value = false;
-    audio.player.pause();
+    audio.pauseMusic();
 
     _initPlayers();
     WidgetsBinding.instance.addObserver(this);
@@ -729,7 +728,7 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     _shakeController.dispose();
     _bounceController.dispose();
     final audio = Get.find<AudioController>();
-    audio.player.play();
+    audio.resumeMusic();
     super.dispose();
     // ✅ حفظ النتيجة عند الخروج فقط إن كان الامتحان غير منتهي
     if (data.isNotEmpty && index < data.length - 1) {

@@ -1,8 +1,9 @@
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/organization/presentation/controllers/organization_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class AddChurchesBox extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -24,9 +25,7 @@ class _AddChurchesBoxState extends State<AddChurchesBox> {
     try {
       setState(() => isLoading = true);
 
-      await FirebaseFirestore.instance.collection('Churches').add({
-        'title': title.text.trim(),
-      });
+      await Get.find<OrganizationController>().addChurch(title.text.trim());
 
       if (widget.onSuccess != null) {
         widget.onSuccess!(); // ← يتم استدعاؤه قبل الإغلاق
@@ -40,6 +39,12 @@ class _AddChurchesBoxState extends State<AddChurchesBox> {
       ).showSnackBar(const SnackBar(content: Text("حدث خطأ أثناء الإضافة")));
       setState(() => isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    title.dispose();
+    super.dispose();
   }
 
   @override
@@ -58,7 +63,7 @@ class _AddChurchesBoxState extends State<AddChurchesBox> {
                     textAlign: TextAlign.start,
                     inputType: TextInputType.text,
                     obscureText: false,
-                    
+
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
                         return "لا يمكن أن يكون الاسم فارغًا";

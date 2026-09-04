@@ -1,8 +1,8 @@
-
 import 'package:aner_astaner/Presentation/Views/Adds_Category/Add_Qusstion_page.dart';
 import 'package:aner_astaner/Presentation/Views/Category/Exames_Edit_Questions_Page.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/question/presentation/controllers/question_controller.dart';
+import 'package:get/get.dart';
 
 class ExamesQuestionsPage extends StatefulWidget {
   const ExamesQuestionsPage({
@@ -32,64 +32,51 @@ class _ExamesQuestionsPageState extends State<ExamesQuestionsPage> {
         content: const Text('هل أنت متأكد من حذف هذا السؤال؟'),
         actions: [
           TextButton(
-              child: const Text('إلغاء'),
-              onPressed: () => Navigator.pop(context, false)),
+            child: const Text('إلغاء'),
+            onPressed: () => Navigator.pop(context, false),
+          ),
           TextButton(
-              child: const Text('حذف', style: TextStyle(color: Colors.red)),
-              onPressed: () => Navigator.pop(context, true)),
+            child: const Text('حذف', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(context, true),
+          ),
         ],
       ),
     );
 
     if (confirmed) {
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.ChurchID)
-          .collection("Chapters")
-          .doc(widget.ChapterID)
-          .collection("Exames")
-          .doc(ExamesEditQuestionsPage.kFixedExameID)
-          .collection("Alangel")
-          .doc(widget.AlngelID)
-          .collection("Alshahat")
-          .doc(widget.AlshahatID)
-          .collection("Qusstions")
-          .doc(docId) // ← مهم
-          .delete();
+      await Get.find<QuestionController>().deleteQuestion(
+        churchId: widget.ChurchID,
+        chapterId: widget.ChapterID,
+        categoryId: widget.AlngelID,
+        sectionId: widget.AlshahatID,
+        questionId: docId,
+      );
 
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم حذف السؤال')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حذف السؤال')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الأسئلة'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("Churches")
-            .doc(widget.ChurchID) // ← اسم الوثيقة في Churches
-            .collection("Chapters")
-            .doc(widget.ChapterID) // ← اسم الوثيقة في Chapters
-            .collection("Exames")
-            .doc(addQusstionPage.kFixedExameID) // ← اسم الوثيقة في Exames
-            .collection("Alangel")
-            .doc(widget.AlngelID)
-            .collection("Alshahat")
-            .doc(widget.AlshahatID)
-            .collection("Qusstions")
-            .snapshots(),
+      appBar: AppBar(title: const Text('الأسئلة')),
+      body: StreamBuilder(
+        stream: Get.find<QuestionController>().watchQuestions(
+          churchId: widget.ChurchID,
+          chapterId: widget.ChapterID,
+          categoryId: widget.AlngelID,
+          sectionId: widget.AlshahatID,
+        ),
         builder: (context, snapshot) {
           if (snapshot.hasError)
             return const Center(child: Text('حدث خطأ أثناء التحميل'));
           if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
 
-          final questions = snapshot.data!.docs;
+          final questions = snapshot.data!;
 
           if (questions.isEmpty) {
             return const Center(child: Text('لا توجد أسئلة حتى الآن'));
@@ -99,15 +86,12 @@ class _ExamesQuestionsPageState extends State<ExamesQuestionsPage> {
             itemCount: questions.length,
             itemBuilder: (context, index) {
               final doc = questions[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final quiz = data['Quiz'] ?? 'بدون عنوان';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
-                  title: Text(quiz),
-                  subtitle:
-                      Text('عدد الخيارات: ${data['options']?.length ?? 0}'),
+                  title: Text(doc.quiz),
+                  subtitle: Text('عدد الخيارات: ${doc.optionsCount}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -147,12 +131,13 @@ class _ExamesQuestionsPageState extends State<ExamesQuestionsPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => addQusstionPage(
-                      AlngelID: widget.AlngelID,
-                      AlshahatID: widget.AlshahatID,
-                      ChapterID: widget.ChapterID,
-                      ChurchID: widget.ChurchID,
-                    )),
+              builder: (_) => addQusstionPage(
+                AlngelID: widget.AlngelID,
+                AlshahatID: widget.AlshahatID,
+                ChapterID: widget.ChapterID,
+                ChurchID: widget.ChurchID,
+              ),
+            ),
           );
         },
         tooltip: 'إضافة سؤال جديد',

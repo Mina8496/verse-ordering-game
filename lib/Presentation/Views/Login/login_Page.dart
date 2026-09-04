@@ -3,11 +3,11 @@
 import 'package:aner_astaner/Presentation/widgets/Custem_text.dart';
 import 'package:aner_astaner/Presentation/widgets/NextButton.dart';
 import 'package:aner_astaner/Presentation/widgets/custom_buttions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/auth/data/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:get/get.dart';
 
 class loginPage extends StatefulWidget {
   loginPage({super.key});
@@ -17,6 +17,7 @@ class loginPage extends StatefulWidget {
 }
 
 class _loginPageState extends State<loginPage> {
+  final AuthService authService = Get.find<AuthService>();
   TextEditingController newEmail = TextEditingController();
   TextEditingController newPassword = TextEditingController();
 
@@ -31,39 +32,16 @@ class _loginPageState extends State<loginPage> {
     );
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        Navigator.pop(context); // إغلاق اللودر
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      final User? user = await authService.signInWithGoogle(
+        ensureProfile: false,
       );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(
-        credential,
-      );
-      final User? user = userCredential.user;
 
       if (user != null) {
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final userDoc = await authService.getUserProfile(user);
 
         // لو المستخدم جديد
-        if (!userDoc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'name': user.displayName ?? '',
-            'role': 'User',
-            'status': 'pending',
-          });
+        if (userDoc == null) {
+          await authService.ensureUserProfile(user);
 
           Navigator.pop(context); // إغلاق اللودر
           Navigator.pushReplacementNamed(context, 'comLogin');
@@ -71,10 +49,7 @@ class _loginPageState extends State<loginPage> {
         }
 
         // لو المستخدم قديم → التحقق من role
-        final data = userDoc.data();
-        final role = data != null && data.containsKey('role')
-            ? data['role']
-            : 'User';
+        final role = userDoc['role'] ?? 'User';
 
         Navigator.pop(context); // إغلاق اللودر
 
@@ -93,10 +68,12 @@ class _loginPageState extends State<loginPage> {
     }
   }
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  @override
+  void dispose() {
+    newEmail.dispose();
+    newPassword.dispose();
+    super.dispose();
+  }
 
   void loginUser() async {
     if (!formstate.currentState!.validate()) return;
@@ -112,30 +89,16 @@ class _loginPageState extends State<loginPage> {
     );
 
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final user = credential.user;
+      final user = await authService.signInWithEmail(email, password);
 
       if (user != null) {
         // ********** السماح لحساب Demo بالدخول بدون تحقق بريد **********
         if (email.toLowerCase() == "demo@test.com") {
-          final userDoc = await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .get();
+          final userDoc = await authService.getUserProfile(user);
 
           Navigator.pop(context); // إغلاق اللودر
 
-          if (!userDoc.exists) {
-            await _firestore.collection('users').doc(user.uid).set({
-              'email': user.email,
-              'name': user.displayName ?? '',
-              'role': 'User',
-            });
-          }
+          if (userDoc == null) await authService.createBasicUserProfile(user);
 
           Navigator.pushReplacementNamed(context, 'MasterHome');
           return;
@@ -158,30 +121,20 @@ class _loginPageState extends State<loginPage> {
           return;
         }
 
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final userDoc = await authService.getUserProfile(user);
 
         Navigator.pop(context); // إغلاق اللودر
 
         // مستخدم جديد
-        if (!userDoc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'name': user.displayName ?? '',
-            'role': 'User',
-          });
+        if (userDoc == null) {
+          await authService.createBasicUserProfile(user);
 
           Navigator.pushReplacementNamed(context, 'comLogin');
           return;
         }
 
         // مستخدم قديم + role
-        final data = userDoc.data();
-        final role = data != null && data.containsKey('role')
-            ? data['role']
-            : 'User';
+        final role = userDoc['role'] ?? 'User';
 
         Navigator.pushReplacementNamed(context, 'MasterHome');
       }
@@ -355,8 +308,8 @@ class _loginPageState extends State<loginPage> {
                           return;
                         }
 
-                        await FirebaseAuth.instance.sendPasswordResetEmail(
-                          email: newEmail.text.trim(),
+                        await authService.sendPasswordResetEmail(
+                          newEmail.text.trim(),
                         );
                         showDialog(
                           context: context,

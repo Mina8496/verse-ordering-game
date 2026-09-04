@@ -1,5 +1,5 @@
 // ignore_for_file: sort_child_properties_last
-import 'package:aner_astaner/Presentation/Controller/constants.dart';
+import 'package:aner_astaner/core/constants/app_colors.dart';
 import 'package:aner_astaner/Presentation/widgets/BottomNavBar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';

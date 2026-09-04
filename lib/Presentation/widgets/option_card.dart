@@ -1,13 +1,10 @@
-import 'package:aner_astaner/Presentation/Controller/constants.dart';
+import 'package:aner_astaner/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class OptionCard extends StatelessWidget {
-  const OptionCard({
-    required this.option,
-    required this.color,
-    Key? key,
-  }) : super(key: key);
+  const OptionCard({required this.option, required this.color, Key? key})
+    : super(key: key);
 
   final String option;
   final Color color;
@@ -24,10 +21,7 @@ class OptionCard extends StatelessWidget {
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(30),
-        side: BorderSide(
-          color: const Color(0xFFB2DFDB),
-          width: 2.w,
-        ),
+        side: BorderSide(color: const Color(0xFFB2DFDB), width: 2.w),
       ),
       color: color,
       child: ListTile(

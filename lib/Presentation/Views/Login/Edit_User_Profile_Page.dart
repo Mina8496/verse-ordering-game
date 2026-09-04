@@ -1,9 +1,11 @@
 import 'package:aner_astaner/Presentation/Views/MasterHome_Page.dart';
+import 'package:aner_astaner/features/auth/data/services/auth_service.dart';
+import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
+import 'package:get/get.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -13,7 +15,8 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final user = FirebaseAuth.instance.currentUser!;
+  final user = Get.find<AuthService>().currentUser!;
+  final userController = Get.find<UserController>();
   final _formKey = GlobalKey<FormState>();
 
   String? name, church, gender;
@@ -36,11 +39,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> loadUserData() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    final data = doc.data();
+    final data = await userController.fetchCurrentUserData();
     print(data);
 
     if (data != null) {
@@ -95,7 +94,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final newBirthday = DateTime(year!, month!, day!);
 
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+    await userController.updateCurrentUser({
       'full_name': name,
       'Church': church,
       'Season': season,
@@ -112,6 +111,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       context,
       MaterialPageRoute(builder: (context) => MasterHome()),
     );
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    churchController.dispose();
+    seasonController.dispose();
+    phoneController.dispose();
+    super.dispose();
   }
 
   @override

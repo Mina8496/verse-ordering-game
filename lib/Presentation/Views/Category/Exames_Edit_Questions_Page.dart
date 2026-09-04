@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aner_astaner/features/question/presentation/controllers/question_controller.dart';
+import 'package:get/get.dart';
 
 class ExamesEditQuestionsPage extends StatefulWidget {
   static const String kFixedExameID = "nFL11C4v8fPRqIgG0ZAe";
@@ -27,6 +28,7 @@ class _ExamesEditQuestionsPageState extends State<ExamesEditQuestionsPage> {
   List<TextEditingController> _optionControllers = [];
   int _correctOptionIndex = 0;
   bool _isLoading = true;
+  final questionController = Get.find<QuestionController>();
 
   @override
   void initState() {
@@ -34,35 +36,26 @@ class _ExamesEditQuestionsPageState extends State<ExamesEditQuestionsPage> {
     _loadQuestionData();
   }
 
-  void _loadQuestionData() async {
-    DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore
-        .instance
-        .collection("Churches")
-        .doc(widget.ChurchID)
-        .collection("Chapters")
-        .doc(widget.ChapterID)
-        .collection("Exames")
-        .doc(ExamesEditQuestionsPage.kFixedExameID)
-        .collection("Alangel")
-        .doc(widget.AlngelID)
-        .collection("Alshahat")
-        .doc(widget.AlshahatID)
-        .collection("Qusstions")
-        .doc(widget.questionId)
-        .get();
+  Future<void> _loadQuestionData() async {
+    final question = await questionController.fetchQuestion(
+      churchId: widget.ChurchID,
+      chapterId: widget.ChapterID,
+      categoryId: widget.AlngelID,
+      sectionId: widget.AlshahatID,
+      questionId: widget.questionId,
+    );
 
-    if (doc.exists) {
-      final data = doc.data()!;
-      _quizController.text = data['Quiz'] ?? '';
+    if (question != null) {
+      _quizController.text = question.quiz;
 
-      Map<String, dynamic> options = Map<String, dynamic>.from(data['options']);
+      final options = question.options;
       _optionControllers = [];
       _correctOptionIndex = 0;
 
       int index = 0;
       options.forEach((key, value) {
         _optionControllers.add(TextEditingController(text: key));
-        if (value == true) {
+        if (value) {
           _correctOptionIndex = index;
         }
         index++;
@@ -88,42 +81,43 @@ class _ExamesEditQuestionsPageState extends State<ExamesEditQuestionsPage> {
         } else if (_correctOptionIndex > index) {
           _correctOptionIndex--;
         }
-        _optionControllers.removeAt(index);
+        _optionControllers.removeAt(index).dispose();
       });
     }
   }
 
   void _updateQuestion() async {
     if (_formKey.currentState!.validate()) {
-      Map<String, dynamic> options = {};
+      final Map<String, bool> options = {};
       for (int i = 0; i < _optionControllers.length; i++) {
         options[_optionControllers[i].text.trim()] = (i == _correctOptionIndex);
       }
 
-      await FirebaseFirestore.instance
-          .collection("Churches")
-          .doc(widget.ChurchID)
-          .collection("Chapters")
-          .doc(widget.ChapterID)
-          .collection("Exames")
-          .doc(ExamesEditQuestionsPage.kFixedExameID)
-          .collection("Alangel")
-          .doc(widget.AlngelID)
-          .collection("Alshahat")
-          .doc(widget.AlshahatID)
-          .collection("Qusstions")
-          .doc(widget.questionId) // ← مهم
-          .update({
-        'Quiz': _quizController.text.trim(),
-        'options': options,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم تعديل السؤال بنجاح')),
+      await questionController.updateQuestion(
+        churchId: widget.ChurchID,
+        chapterId: widget.ChapterID,
+        categoryId: widget.AlngelID,
+        sectionId: widget.AlshahatID,
+        questionId: widget.questionId,
+        quiz: _quizController.text.trim(),
+        options: options,
       );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تم تعديل السؤال بنجاح')));
 
       Navigator.pop(context); // العودة للخلف
     }
+  }
+
+  @override
+  void dispose() {
+    _quizController.dispose();
+    for (final controller in _optionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -168,8 +162,9 @@ class _ExamesEditQuestionsPageState extends State<ExamesEditQuestionsPage> {
                     Expanded(
                       child: TextFormField(
                         controller: controller,
-                        decoration:
-                            InputDecoration(labelText: 'الخيار ${index + 1}'),
+                        decoration: InputDecoration(
+                          labelText: 'الخيار ${index + 1}',
+                        ),
                         validator: (value) =>
                             value!.isEmpty ? 'أدخل الخيار' : null,
                       ),

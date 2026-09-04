@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:aner_astaner/features/auth/data/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AddDataAdmainChurchesPage extends StatefulWidget {
   @override
@@ -21,6 +22,7 @@ class _AddDataAdmainChurchesPageState extends State<AddDataAdmainChurchesPage> {
   String _selectedRole = 'User';
 
   bool _isLoading = false;
+  final authService = Get.find<AuthService>();
 
   void _saveUser() async {
     if (!_formKey.currentState!.validate()) return;
@@ -30,24 +32,18 @@ class _AddDataAdmainChurchesPageState extends State<AddDataAdmainChurchesPage> {
     });
 
     try {
-      // 1. إنشاء المستخدم في Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await authService.createUserWithProfile(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
+        profile: {
+          'full_name': _fullNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'Phone_Number': _phoneController.text.trim(),
+          'Church': _churchController.text.trim(),
+          'Season': _seasonController.text.trim(),
+          'role': _selectedRole,
+        },
       );
-
-      String uid = userCredential.user!.uid;
-
-      // 2. تخزين بيانات المستخدم في Firestore
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'full_name': _fullNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'Phone_Number': _phoneController.text.trim(),
-        'Church': _churchController.text.trim(),
-        'Season': _seasonController.text.trim(),
-        'role': _selectedRole,
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ تم إنشاء خادم الفصل بنجاح')),
@@ -55,14 +51,25 @@ class _AddDataAdmainChurchesPageState extends State<AddDataAdmainChurchesPage> {
 
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: ${e.message}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ: ${e.message}')));
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _phoneController.dispose();
+    _churchController.dispose();
+    _seasonController.dispose();
+    super.dispose();
   }
 
   @override
@@ -84,8 +91,9 @@ class _AddDataAdmainChurchesPageState extends State<AddDataAdmainChurchesPage> {
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration:
-                    const InputDecoration(labelText: 'البريد الإلكتروني'),
+                decoration: const InputDecoration(
+                  labelText: 'البريد الإلكتروني',
+                ),
                 validator: (value) =>
                     value!.isEmpty ? 'أدخل البريد الإلكتروني' : null,
               ),
@@ -119,10 +127,10 @@ class _AddDataAdmainChurchesPageState extends State<AddDataAdmainChurchesPage> {
                 decoration: const InputDecoration(labelText: 'الدور'),
                 initialValue: _selectedRole,
                 items: ['User', 'Admin']
-                    .map((role) => DropdownMenuItem(
-                          value: role,
-                          child: Text(role),
-                        ))
+                    .map(
+                      (role) =>
+                          DropdownMenuItem(value: role, child: Text(role)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   setState(() {
