@@ -31,14 +31,14 @@ class _ChurchesPageState extends State<ChurchesPage> {
 
   Future<void> getData() async {
     setState(() => isLoading = true);
-    final userData = await userController.fetchCurrentUserData();
-    if (userData == null) {
+    final profile = await userController.fetchCurrentUserProfile();
+    if (profile == null) {
       if (mounted) setState(() => isLoading = false);
       return;
     }
 
-    role = userData['role'] as String? ?? '';
-    churchId = userData['ChurchID'] as String?;
+    role = profile.role ?? '';
+    churchId = profile.churchId;
     churches = await organizationController.fetchChurches(
       role: role,
       churchId: churchId,
