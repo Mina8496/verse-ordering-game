@@ -1,3 +1,7 @@
+import 'package:aner_astaner/features/exam_catalog/data/repositories/firestore_exam_catalog_repository.dart';
+import 'package:aner_astaner/features/exam_catalog/domain/repositories/exam_catalog_repository.dart';
+import 'package:aner_astaner/features/organization/data/repositories/firestore_organization_repository.dart';
+import 'package:aner_astaner/features/organization/domain/repositories/organization_repository.dart';
 import 'package:aner_astaner/features/user/data/repositories/firestore_user_repository.dart';
 import 'package:aner_astaner/features/user/data/services/profile_image_service.dart';
 import 'package:aner_astaner/features/user/domain/repositories/profile_image_uploader.dart';
@@ -29,14 +33,28 @@ class AppBindings extends Bindings {
     Get.lazyPut<AudioController>(AudioController.new, fenix: true);
     Get.lazyPut<BibleVerseController>(BibleVerseController.new, fenix: true);
     Get.lazyPut<ExamController>(ExamController.new, fenix: true);
-    Get.lazyPut<ExamCatalogController>(ExamCatalogController.new, fenix: true);
+    Get.lazyPut<ExamCatalogRepository>(
+      FirestoreExamCatalogRepository.new,
+      fenix: true,
+    );
+    Get.lazyPut<ExamCatalogController>(
+      () =>
+          ExamCatalogController(repository: Get.find<ExamCatalogRepository>()),
+      fenix: true,
+    );
     Get.lazyPut<ExamSettingsController>(
       ExamSettingsController.new,
       fenix: true,
     );
     Get.lazyPut<QuestionController>(QuestionController.new, fenix: true);
+    Get.lazyPut<OrganizationRepository>(
+      FirestoreOrganizationRepository.new,
+      fenix: true,
+    );
     Get.lazyPut<OrganizationController>(
-      OrganizationController.new,
+      () => OrganizationController(
+        repository: Get.find<OrganizationRepository>(),
+      ),
       fenix: true,
     );
     Get.lazyPut<UserRepository>(FirestoreUserRepository.new, fenix: true);

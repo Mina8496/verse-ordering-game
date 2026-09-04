@@ -1,10 +1,9 @@
-import '../../data/repositories/firestore_exam_catalog_repository.dart';
 import '../../domain/entities/catalog_item.dart';
 import '../../domain/repositories/exam_catalog_repository.dart';
 
 class ExamCatalogController {
-  ExamCatalogController({ExamCatalogRepository? repository})
-    : _repository = repository ?? FirestoreExamCatalogRepository();
+  ExamCatalogController({required ExamCatalogRepository repository})
+    : _repository = repository;
 
   final ExamCatalogRepository _repository;
 
