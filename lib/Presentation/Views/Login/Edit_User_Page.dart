@@ -30,8 +30,8 @@ class _EditUserPageState extends State<EditUserPage> {
 
   Future<void> fetchCurrentUser() async {
     // نجيب بيانات المستخدم اللي بيفتح الصفحة
-    final currentUserData = await userController.fetchCurrentUserData();
-    currentUserRole = currentUserData?['role'] as String? ?? 'User';
+    final currentUserProfile = await userController.fetchCurrentUserProfile();
+    currentUserRole = currentUserProfile?.role ?? 'User';
 
     // نجيب بيانات المستخدم المراد تعديله
     if (widget.userID == null) return;
