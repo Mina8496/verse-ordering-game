@@ -33,14 +33,14 @@ class _ChaptersPageState extends State<ChaptersPage> {
 
   Future<void> fetchChapters() async {
     setState(() => isLoading = true);
-    final userData = await userController.fetchCurrentUserData();
-    if (userData == null) {
+    final profile = await userController.fetchCurrentUserProfile();
+    if (profile == null) {
       if (mounted) setState(() => isLoading = false);
       return;
     }
 
-    role = userData['role'] as String? ?? '';
-    selectedChapterId = userData['ChapterID'] as String?;
+    role = profile.role ?? '';
+    selectedChapterId = profile.chapterId;
     chapters = await organizationController.fetchChapters(
       churchId: widget.ChurchID,
       role: role,
