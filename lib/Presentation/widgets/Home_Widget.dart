@@ -37,7 +37,8 @@ class HomeWidget extends StatefulWidget {
 class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   final ExamCatalogController examCatalogController =
       Get.find<ExamCatalogController>();
-  ProfileImageUploader get profileImageService => Get.find<ProfileImageUploader>();
+  ProfileImageUploader get profileImageService =>
+      Get.find<ProfileImageUploader>();
   final ExamSettingsController examSettingsController =
       Get.find<ExamSettingsController>();
   String? imageUrl;
@@ -267,18 +268,18 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   }
 
   Future<void> getData() async {
-    final userData = await userController.fetchCurrentUserData();
+    final profile = await userController.fetchCurrentUserProfile();
 
-    if (userData != null) {
+    if (profile != null) {
       hasUserData = true;
-      churchId = userData['ChurchID'];
-      chapterId = userData['ChapterID'];
-      fullName = userData['full_name'];
-      season = userData['Season'];
-      church = userData['Church'];
-      role = userData['role'];
+      churchId = profile.churchId;
+      chapterId = profile.chapterId;
+      fullName = profile.fullName;
+      season = profile.season;
+      church = profile.church;
+      role = profile.role;
 
-      imageUrl = userData['profileImageUrl'];
+      imageUrl = profile.profileImageUrl;
     }
     if (!mounted) return;
     setState(() => isLoading = false);
@@ -335,15 +336,15 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
   }
 
   Future<bool> isUserInfoComplete() async {
-    final userData = await userController.fetchCurrentUserData();
-    if (userData == null) return false;
+    final profile = await userController.fetchCurrentUserProfile();
+    if (profile == null) return false;
 
     // الحقول المطلوبة
-    return userData['full_name'] != null &&
-        userData['ChurchID'] != null &&
-        userData['ChapterID'] != null &&
-        userData['Season'] != null &&
-        userData['Church'] != null;
+    return profile.fullName != null &&
+        profile.churchId != null &&
+        profile.chapterId != null &&
+        profile.season != null &&
+        profile.church != null;
   }
 
   void showCompleteInfoDialog() {
