@@ -1,3 +1,5 @@
+import 'package:aner_astaner/features/user/domain/entities/user_profile.dart';
+
 import '../entities/user_model.dart';
 import '../entities/user_summary.dart';
 
@@ -15,6 +17,8 @@ abstract interface class UserRepository {
   });
 
   Future<void> updateUserStatus(String userId, String status);
+
+  Future<UserProfile?> fetchCurrentUserProfile();
 
   Stream<List<UserSummary>> watchDisabledUsers(String churchId);
 

@@ -1,3 +1,4 @@
+import 'package:aner_astaner/features/user/domain/entities/user_profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,6 +13,12 @@ class FirestoreUserRepository implements UserRepository {
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+
+  @override
+Future<UserProfile?> fetchCurrentUserProfile() async {
+  final data = await fetchCurrentUserData();
+  return data != null ? UserProfile.fromMap(data) : null;
+}
 
   @override
   Stream<List<UserSummary>> watchUsersByOrganization({
