@@ -1,3 +1,5 @@
+import 'package:aner_astaner/features/user/domain/entities/user_profile.dart';
+
 import '../../domain/entities/user_model.dart';
 import '../../domain/entities/user_summary.dart';
 import '../../domain/repositories/user_repository.dart';
@@ -7,6 +9,9 @@ class UserController {
     : _repository = repository;
 
   final UserRepository _repository;
+
+  Future<UserProfile?> fetchCurrentUserProfile() =>
+    _repository.fetchCurrentUserProfile();
 
   Stream<List<UserSummary>> watchUsersByOrganization({
     required String churchId,
