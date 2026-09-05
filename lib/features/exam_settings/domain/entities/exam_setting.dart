@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ExamSetting {
   const ExamSetting({
     this.id = '',
+    required this.bookId,
+    required this.chapterId,
     required this.bookTitle,
     required this.chapterTitle,
     required this.durationDays,
@@ -14,6 +16,8 @@ class ExamSetting {
   });
 
   final String id;
+  final String? bookId;
+  final String? chapterId;
   final String bookTitle;
   final String chapterTitle;
   final int durationDays;
@@ -26,6 +30,8 @@ class ExamSetting {
   factory ExamSetting.fromMap(Map<String, dynamic> data) {
     return ExamSetting(
       id: data['id'] as String? ?? '',
+      bookId: data['bookId'] as String?,
+      chapterId: data['chapterId'] as String?,
       bookTitle: data['bookTitle'] as String? ?? 'غير محدد',
       chapterTitle: data['chapterTitle'] as String? ?? 'غير محدد',
       durationDays: (data['durationDays'] as num?)?.toInt() ?? 0,

@@ -43,9 +43,12 @@ class FirestoreExamSettingsRepository implements ExamSettingsRepository {
   }
 
   @override
-  Future<List<ExamSetting>> fetchSettings({required String chapterId}) async {
+  Future<List<ExamSetting>> fetchSettings({
+    required String churchId,
+    required String chapterId,
+  }) async {
     final snapshot = await _settings(
-      churchId: chapterId,
+      churchId: churchId,
       chapterId: chapterId,
     ).get();
 
