@@ -15,6 +15,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_rx/src/rx_types/rx_types.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:aner_astaner/features/user/domain/repositories/user_repository.dart';
 import 'dart:math';
 
 class ExamesQuizPage extends StatefulWidget {
@@ -167,14 +168,10 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     if (uid == null) return;
 
     // 1️⃣ تحقق من بيانات المستخدم
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
 
-    final userData = userDoc.data() ?? {};
-    final role = userData['role'] ?? '';
-    final status = userData['status'] ?? 'pending'; // 👈 نضيفها هنا
+    final role = profile?.role ?? '';
+    final status = profile?.status ?? 'pending'; // 👈 نضيفها هنا
 
     // 2️⃣ لو المستخدم Admin أو DataAdmin يدخل عادي
     if (role == 'DataAdmin' || role == 'Admin' || role == 'SuperAdmin') {
@@ -309,15 +306,11 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    final userData = userDoc.data() ?? {};
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
 
-    final full_name = userData['full_name'];
-    final Church = userData['Church'];
-    final userChurchID = userData['ChurchID'];
+    final full_name = profile?.fullName;
+    final Church = profile?.church;
+    final userChurchID = profile?.churchId;
 
     final resultId = "${widget.alngelID}_${widget.alshahatID}";
     final resultRef = FirebaseFirestore.instance
@@ -479,15 +472,11 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    final userData = userDoc.data() as Map<String, dynamic>?;
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
 
-    final full_name = userData?['full_name'];
-    final Church = userData?['Church'];
-    final userChurchID = userData?['ChurchID'];
+    final full_name = profile?.fullName;
+    final Church = profile?.church;
+    final userChurchID = profile?.churchId;
 
     final resultId = "${widget.alngelID}_${widget.alshahatID}";
     final resultRef = FirebaseFirestore.instance
@@ -729,13 +718,12 @@ class _ExamesQuizPageState extends State<ExamesQuizPage>
     _bounceController.dispose();
     final audio = Get.find<AudioController>();
     audio.resumeMusic();
-    super.dispose();
+
     // ✅ حفظ النتيجة عند الخروج فقط إن كان الامتحان غير منتهي
     if (data.isNotEmpty && index < data.length - 1) {
       _handleExitBeforeFinish();
     }
     final examController = Get.find<ExamController>();
-
     examController.isExamRunning.value = false; // الامتحان انتهى
 
     super.dispose();
