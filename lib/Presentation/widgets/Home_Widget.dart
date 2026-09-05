@@ -497,7 +497,10 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
 
                                           final settings =
                                               await examSettingsController
-                                                  .fetchSettings(chapterId!);
+                                                  .fetchSettings(
+                                                    churchId: churchId!,
+                                                    chapterId: chapterId!,
+                                                  );
 
                                           if (settings.isEmpty) {
                                             Fluttertoast.showToast(
@@ -692,9 +695,11 @@ class _HomeWidgetState extends State<HomeWidget> with TickerProviderStateMixin {
                                                                 chapterID:
                                                                     chapterId!,
                                                                 alngelID:
-                                                                    selectedBook!,
+                                                                    activeSetting
+                                                                        .bookId!,
                                                                 alshahatID:
-                                                                    selectedChapter!,
+                                                                    activeSetting
+                                                                        .chapterId!,
                                                               ),
                                                             );
                                                           },

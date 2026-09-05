@@ -1,10 +1,9 @@
-import '../../data/repositories/firestore_organization_repository.dart';
 import '../../domain/entities/organization_item.dart';
 import '../../domain/repositories/organization_repository.dart';
 
 class OrganizationController {
-  OrganizationController({OrganizationRepository? repository})
-    : _repository = repository ?? FirestoreOrganizationRepository();
+  OrganizationController({required  OrganizationRepository repository})
+    : _repository = repository;
 
   final OrganizationRepository _repository;
 

@@ -10,7 +10,6 @@ import 'package:upgrader/upgrader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // await FirebaseFirestore.instance.clearPersistence();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

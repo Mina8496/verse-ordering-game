@@ -12,8 +12,10 @@ class ExamSettingsController {
   Future<ExamSelection?> fetchCurrentSelection() =>
       _repository.fetchCurrentSelection();
 
-  Future<List<ExamSetting>> fetchSettings(String chapterId) =>
-      _repository.fetchSettings(chapterId: chapterId);
+  Future<List<ExamSetting>> fetchSettings({
+    required String churchId,
+    required String chapterId,
+  }) => _repository.fetchSettings(churchId: churchId, chapterId: chapterId);
 
   Future<List<ExamSetting>> fetchAllSettings({
     required String churchId,
