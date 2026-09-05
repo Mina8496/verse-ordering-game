@@ -2,11 +2,11 @@
 
 import 'package:aner_astaner/Presentation/Views/Category/Exames_Quiz_Page.dart';
 import 'package:aner_astaner/Presentation/Views/Login/Edit_User_Page.dart';
+import 'package:aner_astaner/features/user/domain/repositories/user_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart' hide Rx;
 import 'package:rxdart/rxdart.dart';
 import 'package:intl/intl.dart';
 
@@ -26,31 +26,23 @@ class _ChurchUsersResultsPageState extends State<ChurchUsersResultsPage> {
   String? SeasonName;
   String? currentUserRole;
 
-  /// ✅ يجيب بيانات المستخدم الحالي
   Future<void> fetchCurrentUserData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
+    if (profile == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    if (!userDoc.exists) return;
-
-    currentUserChurchID = userDoc['ChurchID'];
-    currentUserClassID = userDoc['ChapterID'];
-    ChurchName = userDoc['Church'];
-    SeasonName = userDoc['Season'];
-    currentUserRole = userDoc['role'];
+    currentUserChurchID = profile.churchId;
+    currentUserClassID = profile.chapterId;
+    ChurchName = profile.church;
+    SeasonName = profile.season;
+    currentUserRole = profile.role;
   }
 
-  /// ✅ زر التحديث
   Future<void> refreshData() async {
     await fetchCurrentUserData();
     setState(() {});
   }
 
-  /// ✅ stream لعناوين الأسفار
+  /// stream لعناوين الأسفار
   Stream<List<String>> getBookTitles() {
     if (currentUserChurchID == null) return const Stream.empty();
     print("👀 churchId=$currentUserChurchID, chapterId=$currentUserClassID");
