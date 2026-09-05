@@ -1,5 +1,6 @@
 // ignore_for_file: unnecessary_cast
 import 'package:aner_astaner/features/user/domain/entities/user_model.dart';
+import 'package:aner_astaner/features/user/domain/repositories/user_repository.dart';
 import 'package:aner_astaner/features/user/presentation/controllers/user_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -66,23 +67,12 @@ class _ExamSettingsDialogState extends State<ExamSettingsDialog> {
   }
 
   Future<void> getUserData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
+    if (profile != null) {
+      fullName = profile.fullName;
+      season = profile.season;
 
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-
-    if (userDoc.exists) {
-      final userData = userDoc.data() as Map<String, dynamic>;
-      fullName = userData['full_name'];
-      season = userData['Season'];
-
-      setState(() {
-        isLoading = false;
-      });
-
+      setState(() => isLoading = false);
       await fetchAlnagel();
     }
   }
@@ -250,14 +240,13 @@ class _ExamSettingsDialogState extends State<ExamSettingsDialog> {
                           if (pickedDate != null) {
                             setState(() {
                               examStartDate = pickedDate;
-                              examEndDate ??= examStartDate!.add(
-                                const Duration(days: 1),
-                              );
-                              durationDays =
-                                  examEndDate!
-                                      .difference(examStartDate!)
-                                      .inDays +
-                                  1;
+                              if (examEndDate != null) {
+                                durationDays =
+                                    examEndDate!
+                                        .difference(examStartDate!)
+                                        .inDays +
+                                    1;
+                              }
                             });
                           }
                         },
@@ -295,14 +284,20 @@ class _ExamSettingsDialogState extends State<ExamSettingsDialog> {
                       const SizedBox(height: 5),
                       InkWell(
                         onTap: () async {
+                          if (examStartDate == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('اختر تاريخ البداية أولاً'),
+                              ),
+                            );
+                            return;
+                          }
                           final pickedDate = await showDatePicker(
                             context: context,
                             initialDate:
                                 examEndDate ??
-                                (examStartDate ?? DateTime.now()).add(
-                                  const Duration(days: 1),
-                                ),
-                            firstDate: examStartDate ?? DateTime.now(),
+                                examStartDate!.add(const Duration(days: 1)),
+                            firstDate: examStartDate!,
                             lastDate: DateTime(2100),
                           );
                           if (pickedDate != null) {
