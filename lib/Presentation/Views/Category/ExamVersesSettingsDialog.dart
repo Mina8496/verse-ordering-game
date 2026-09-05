@@ -1,7 +1,9 @@
+import 'package:aner_astaner/features/user/domain/repositories/user_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 class ExamVersesSettingsDialog extends StatefulWidget {
   const ExamVersesSettingsDialog({super.key});
@@ -41,20 +43,13 @@ class _ExamVersesSettingsDialogState extends State<ExamVersesSettingsDialog> {
   }
 
   Future<void> getUserData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final profile = await Get.find<UserRepository>().fetchCurrentUserProfile();
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-
-    if (userDoc.exists) {
-      final data = userDoc.data()!;
-      churchId = data["ChurchID"];
-      chapterId = data["ChapterID"];
-      fullName = data["full_name"];
-      season = data["Season"];
+    if (profile != null) {
+      churchId = profile.churchId;
+      chapterId = profile.chapterId;
+      fullName = profile.fullName;
+      season = profile.season;
 
       await fetchVerses();
       setState(() => isLoading = false);
