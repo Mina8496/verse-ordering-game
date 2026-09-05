@@ -179,26 +179,10 @@ class _RigesterViewState extends State<RigesterView> {
                               message:
                                   "تم إرسال رابط تأكيد إلى بريدك الإلكتروني. من فضلك قم بتأكيده أولاً.",
                               onOk: () async {
-                                final userDoc = FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(user.uid);
-                                final snapshot = await userDoc.get();
-
-                                if (snapshot.exists) {
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    'OldUserPage',
-                                  );
-                                } else {
-                                  await userDoc.set({
-                                    'email': user.email,
-                                    'createdAt': FieldValue.serverTimestamp(),
-                                  });
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    'CompleteProfilePage',
-                                  );
-                                }
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  'comLogin',
+                                );
                               },
                             );
                           }
